@@ -2,25 +2,21 @@ package main
 
 import (
 	"context"
-	"embed"
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
+	"github.com/labstack/echo/v4"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 )
 
 var version = "1.0.0"
 
-//go:embed web
-//go:embed web/_next/static
-//go:embed web/_next/static/chunks/pages/*.js
-//go:embed web/_next/static/*/*.js
-var webContent embed.FS
+//  you can use the below, to embed your whole website content into the binary itself, Thanks to: https://v0x.nl/articles/portable-apps-go-nextjs/ , https://github.com/dstotijn/hetty
 
 var qataiUsage = `
 Usage:
@@ -44,7 +40,7 @@ Subcommands:
 
 Run ` + "`qatai <subcommand> --help`" + ` for subcommand specific usage instructions.
 
-Visit https://qatai.xyz to learn more about qatai.
+
 `
 
 type QataiCommand struct {
@@ -69,7 +65,7 @@ func NewqataiCommand() (*ffcli.Command, *Config) {
 	// fs.StringVar(&cmd.key, "key", "~/.qatai/qatai_key.pem",
 	// 	"Path to root CA private key. Creates a new private key if file doesn't exist.")
 	fs.StringVar(&cmd.db, "db", "~/.qatai/db", "Database directory path.")
-	fs.StringVar(&cmd.addr, "addr", ":8080", "TCP address to listen on, in the form \"host:port\".")
+	fs.StringVar(&cmd.addr, "addr", ":8000", "TCP address to listen on, in the form \"host:port\".")
 	fs.BoolVar(&cmd.version, "version", false, "Output version.")
 	fs.BoolVar(&cmd.version, "v", false, "Output version.")
 
@@ -108,18 +104,18 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	if listenHost == "" || listenHost == "0.0.0.0" || listenHost == "127.0.0.1" || listenHost == "::1" {
 		url = fmt.Sprintf("http://localhost:%v", listenPort)
 	}
-
+	e := echo.New()
+	e.HideBanner = true
 	go func() {
-		mainLogger.Info(fmt.Sprintf("Hetty (v%v) is running on %v ...", version, cmd.addr))
+		mainLogger.Info(fmt.Sprintf("qatai (v%v) is running on %v ...", version, cmd.addr))
 		mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
 
-		//you main blocking routine here
-		for {
-			time.Sleep(1 * time.Second)
+		SetupServer(e, cmd.config.logger.Named("http"))
+		err := e.Start(cmd.addr)
+		if err != http.ErrServerClosed {
+			mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
 		}
-		// if err != http.ErrServerClosed {
-		// 	mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
-		// }
+
 	}()
 
 	// Wait for interrupt signal.
@@ -132,10 +128,10 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	// Note: We expect httpServer.Handler to handle timeouts, thus, we don't
 	// need a context value with deadline here.
 	//nolint:contextcheck
-	// err = httpServer.Shutdown(context.Background())
-	// if err != nil {
-	// 	return fmt.Errorf("failed to shutdown HTTP server: %w", err)
-	// }
+	err = e.Shutdown(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to shutdown HTTP server: %w", err)
+	}
 
 	return nil
 }
