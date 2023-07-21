@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 
+	"github.com/bodaay/qatai/pkg/db"
 	"github.com/labstack/echo/v4"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
@@ -44,13 +46,15 @@ Run ` + "`qatai <subcommand> --help`" + ` for subcommand specific usage instruct
 `
 
 type QataiCommand struct {
-	config *Config
-
-	cert    string
-	key     string
-	db      string
-	addr    string
-	version bool
+	config    *Config
+	bboltPath string
+	useMongo  bool
+	mongoHost string
+	cert      string
+	key       string
+	db        string
+	addr      string
+	version   bool
 }
 
 func NewqataiCommand() (*ffcli.Command, *Config) {
@@ -64,6 +68,9 @@ func NewqataiCommand() (*ffcli.Command, *Config) {
 	// 	"Path to root CA certificate. Creates a new certificate if file doesn't exist.")
 	// fs.StringVar(&cmd.key, "key", "~/.qatai/qatai_key.pem",
 	// 	"Path to root CA private key. Creates a new private key if file doesn't exist.")
+	fs.StringVar(&cmd.bboltPath, "bbolt_path", "~/.qatai/db", "Database directory path.")
+	fs.BoolVar(&cmd.useMongo, "use_mongo", false, "use mongo db instead of bbolt")
+	fs.StringVar(&cmd.mongoHost, "mongo_host", "mongodb://localhost:27017", "mongo db connection string")
 	fs.StringVar(&cmd.db, "db", "~/.qatai/db", "Database directory path.")
 	fs.StringVar(&cmd.addr, "addr", ":8000", "TCP address to listen on, in the form \"host:port\".")
 	fs.BoolVar(&cmd.version, "version", false, "Output version.")
@@ -104,6 +111,21 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	if listenHost == "" || listenHost == "0.0.0.0" || listenHost == "127.0.0.1" || listenHost == "::1" {
 		url = fmt.Sprintf("http://localhost:%v", listenPort)
 	}
+	//db
+	mdb, err := db.InitMongoDB("mongodb://localhost:27017", "qatai")
+	if err != nil {
+		panic(err)
+	}
+
+	os.MkdirAll("data", os.ModePerm)
+	bboltDbPath := path.Join("data", "bbolt.db")
+	bdb, err := db.InitBBoltDB(bboltDbPath)
+	if err != nil {
+		panic(err)
+	}
+	mdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
+	bdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
+	//webserver
 	e := echo.New()
 	e.HideBanner = true
 	go func() {

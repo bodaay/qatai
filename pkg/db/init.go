@@ -8,15 +8,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var requiredBuckets = []string{"config", "users", "models", "chats"}
+
 type MongoDB struct {
 	client *mongo.Client
+	dbName string
 }
 
 type BBoltDB struct {
-	db *bbolt.DB
+	db     *bbolt.DB
+	dbPath string
 }
 
-func InitMongoDB(uri string) (QataiDatabase, error) {
+func InitMongoDB(uri string, dbName string) (QataiDatabase, error) {
 	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err := mongo.Connect(context.Background(), clientOptions)
@@ -30,30 +34,30 @@ func InitMongoDB(uri string) (QataiDatabase, error) {
 		return nil, err
 	}
 
-	return newMongoDB(client), nil
+	ndb := newMongoDB(client)
+	ndb.dbName = dbName
+	return ndb, nil
 }
 
-func InitBBoltDB(path string) (QataiDatabase, error) {
-	db, err := bbolt.Open(path, 0600, nil)
+func InitBBoltDB(dbPath string) (QataiDatabase, error) { // add all BBolt
+	db, err := bbolt.Open(dbPath, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.Update(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("users"))
-		if err != nil {
+	for _, bbucket := range requiredBuckets {
+		err = db.Update(func(tx *bbolt.Tx) error {
+			_, err := tx.CreateBucketIfNotExists([]byte(bbucket))
 			return err
+		})
+		if err != nil {
+			return nil, err
 		}
-
-		_, err = tx.CreateBucketIfNotExists([]byte("config"))
-		return err
-	})
-
-	if err != nil {
-		return nil, err
 	}
 
-	return newBBoltDB(db), nil
+	ndb := newBBoltDB(db)
+	ndb.dbPath = dbPath
+	return ndb, nil
 }
 
 func newMongoDB(client *mongo.Client) *MongoDB {

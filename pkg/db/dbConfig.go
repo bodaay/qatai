@@ -56,7 +56,7 @@ func (db *BBoltDB) SetConfig(config *Config) error {
 
 // Mongo
 func (db *MongoDB) GetConfig(key string) (*Config, error) {
-	collection := db.client.Database("test").Collection("config")
+	collection := db.client.Database(db.dbName).Collection("config")
 	filter := bson.M{"key": key}
 
 	var config Config
@@ -69,7 +69,7 @@ func (db *MongoDB) GetConfig(key string) (*Config, error) {
 }
 
 func (db *MongoDB) SetConfig(config *Config) error {
-	collection := db.client.Database("test").Collection("config")
+	collection := db.client.Database(db.dbName).Collection("config")
 	filter := bson.M{"key": config.Key}
 
 	upsert := true

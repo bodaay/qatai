@@ -12,10 +12,11 @@ import (
 
 type User struct {
 	ID       string `json:"id"`
-	Name     string `json:"name"`
 	Email    string `json:"email"`
+	Name     string `json:"name"`
 	Salt     string `json:"salt"`
 	Password string `json:"password"` // This should be hashed & salted in a real-world scenario
+
 }
 
 // BBolt
@@ -60,7 +61,7 @@ func (db *BBoltDB) SetUser(user *User) error {
 //Mongo
 
 func (db *MongoDB) GetUser(id string) (*User, error) {
-	collection := db.client.Database("test").Collection("users")
+	collection := db.client.Database(db.dbName).Collection("users")
 	filter := bson.M{"id": id}
 
 	var user User
@@ -73,7 +74,7 @@ func (db *MongoDB) GetUser(id string) (*User, error) {
 }
 
 func (db *MongoDB) SetUser(user *User) error {
-	collection := db.client.Database("test").Collection("users")
+	collection := db.client.Database(db.dbName).Collection("users")
 	filter := bson.M{"id": user.ID}
 
 	upsert := true
