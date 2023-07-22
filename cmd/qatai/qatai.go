@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 
-	"github.com/bodaay/qatai/pkg/db"
 	"github.com/labstack/echo/v4"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
@@ -112,19 +110,9 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 		url = fmt.Sprintf("http://localhost:%v", listenPort)
 	}
 	//db
-	mdb, err := db.InitMongoDB("mongodb://localhost:27017", "qatai")
-	if err != nil {
-		panic(err)
-	}
 
-	os.MkdirAll("data", os.ModePerm)
-	bboltDbPath := path.Join("data", "bbolt.db")
-	bdb, err := db.InitBBoltDB(bboltDbPath)
-	if err != nil {
-		panic(err)
-	}
-	mdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
-	bdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
+	TestDB()
+
 	//webserver
 	e := echo.New()
 	e.HideBanner = true
@@ -156,4 +144,24 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	}
 
 	return nil
+}
+
+func TestDB() {
+	// mdb, err := db.InitMongoDB("mongodb://localhost:27017", "qatai")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// os.MkdirAll("data", os.ModePerm)
+	// bboltDbPath := path.Join("data", "bbolt.db")
+	// bdb, err := db.InitBBoltDB(bboltDbPath)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// // mdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
+	// // bdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
+	// fmt.Println(mdb.GetConfig("TestKey"))
+	// fmt.Println(bdb.GetConfig("TestKey"))
+	// fmt.Println(mdb.CheckUserExists("khalefa@whatever.com"))
+	// fmt.Println(bdb.CheckUserExists("khalefa@whatever.com"))
+
 }
