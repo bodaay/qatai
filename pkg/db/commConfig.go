@@ -8,22 +8,39 @@ type Config struct {
 const collection_bucket_name = "config"
 
 // BBolt
-func (db *QataiDatabaseCommon) GetConfig(key string) (*Config, error) {
+func GetConfig(db QataiDatabase, key string) (*Config, error) {
 	var config Config
 	v, err := db.GetValueByKeyName(collection_bucket_name, key)
 	if err != nil {
 		return nil, err
 	}
-	config.Value = v
-
+	config.Value = v.Value
+	config.Key = v.Key
 	return &config, nil
 }
 
-func (db *QataiDatabaseCommon) SetConfig(config *Config) error {
-
-	err := db.SetValueByKeyName(collection_bucket_name, config.Key, config.Value)
+func SetConfig(db QataiDatabase, config *Config) error {
+	record := QataiDatabaseRecord(*config)
+	err := db.SetValueByKeyName(collection_bucket_name, &record)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func GetAllConfig(db QataiDatabase) ([]Config, error) {
+	var configs []Config
+	values, err := db.GetAllRecordForCollectionBucket(collection_bucket_name)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range values {
+		configs = append(configs, Config(v))
+	}
+
+	return configs, nil
+}
+
+func ClearAllConfig(db QataiDatabase) error {
+	return db.ClearAllRecordsInCollection(collection_bucket_name)
 }

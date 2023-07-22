@@ -7,13 +7,12 @@ import (
 )
 
 type BBoltDB struct {
-	QataiDatabaseCommon
 	db     *bolt.DB
 	dbPath string
 }
 
-func InitNewBoltDB(uriOrPath string, dbName string) (*BBoltDB, error) { // add all BBolt
-	db, err := bolt.Open(uriOrPath, 0600, nil)
+func InitNewBoltDB(path string) (*BBoltDB, error) { // add all BBolt
+	db, err := bolt.Open(path, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +21,10 @@ func InitNewBoltDB(uriOrPath string, dbName string) (*BBoltDB, error) { // add a
 		return nil, err
 	}
 
-	return &BBoltDB{db: db, dbPath: uriOrPath}, nil
+	return &BBoltDB{
+		db:     db,
+		dbPath: path,
+	}, nil
 }
 
 func createCollectionBucket(db *bolt.DB, names []string) error {
@@ -37,32 +39,37 @@ func createCollectionBucket(db *bolt.DB, names []string) error {
 	}
 	return nil
 }
-func (b *BBoltDB) SetValueByKeyName(CollectionBucketName string, Key string, Value string) {
-	b.db.Update(func(tx *bolt.Tx) error {
+func (b *BBoltDB) SetValueByKeyName(CollectionBucketName string, record *QataiDatabaseRecord) error {
+	err := b.db.Update(func(tx *bolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte(CollectionBucketName))
 		if err != nil {
 			return err
 		}
 
-		err = bucket.Put([]byte(Key), []byte(Value))
+		err = bucket.Put([]byte(record.Key), []byte(record.Value))
 		return err
 	})
+	return err
 }
 
-func (b *BBoltDB) GetValueByKeyName(CollectionBucketName string, Key string) string {
+func (b *BBoltDB) GetValueByKeyName(CollectionBucketName string, Key string) (*QataiDatabaseRecord, error) {
 	var value string
-	b.db.View(func(tx *bolt.Tx) error {
+	err := b.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(CollectionBucketName))
 		if bucket != nil {
 			value = string(bucket.Get([]byte(Key)))
+			return nil
 		}
-		return nil
+		return fmt.Errorf("bucket does not exists")
 	})
-	return value
+	if err != nil {
+		return nil, err
+	}
+	return &QataiDatabaseRecord{Key, value}, nil
 }
 
-func (db *BBoltDB) GetAllRecordForCollectionBucket(CollectionBucketName string) ([]string, error) {
-	var results []string
+func (db *BBoltDB) GetAllRecordForCollectionBucket(CollectionBucketName string) ([]QataiDatabaseRecord, error) {
+	var results []QataiDatabaseRecord
 	err := db.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(CollectionBucketName))
 		if b == nil {
@@ -70,7 +77,7 @@ func (db *BBoltDB) GetAllRecordForCollectionBucket(CollectionBucketName string) 
 		}
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			results = append(results, fmt.Sprintf("%s: %s", k, v))
+			results = append(results, QataiDatabaseRecord{Key: string(k), Value: string(v)})
 		}
 		return nil
 	})
@@ -78,4 +85,15 @@ func (db *BBoltDB) GetAllRecordForCollectionBucket(CollectionBucketName string) 
 		return results, err
 	}
 	return results, nil
+}
+
+func (db *BBoltDB) ClearAllRecordsInCollection(CollectionBucketName string) error {
+	err := db.db.Update(func(tx *bolt.Tx) error {
+		return tx.DeleteBucket([]byte(CollectionBucketName))
+	})
+	if err != nil {
+		return err
+	}
+	//recreate collections in case of bolt, since its needed
+	return createCollectionBucket(db.db, RequiredCollectionBucket)
 }

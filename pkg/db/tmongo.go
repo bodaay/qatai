@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -10,13 +10,12 @@ import (
 )
 
 type MongoDB struct {
-	QataiDatabaseCommon
 	client *mongo.Client
 	dbName string
 }
 
-func InitNewMongoDB(uriOrPath string, dbName string) (*MongoDB, error) {
-	clientOptions := options.Client().ApplyURI(uriOrPath)
+func InitNewMongoDB(uri string, dbName string) (*MongoDB, error) {
+	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
@@ -29,32 +28,35 @@ func InitNewMongoDB(uriOrPath string, dbName string) (*MongoDB, error) {
 		return nil, err
 	}
 
-	return &MongoDB{client: client, dbName: dbName}, nil
+	return &MongoDB{
+		client: client,
+		dbName: dbName,
+	}, nil
 }
 
-func (m *MongoDB) SetValueByKeyName(CollectionBucketName string, Key string, Value string) error {
+func (m *MongoDB) SetValueByKeyName(CollectionBucketName string, record *QataiDatabaseRecord) error {
 	collection := m.client.Database(m.dbName).Collection(CollectionBucketName)
-	filter := bson.M{"_id": Key}
-	update := bson.M{"$set": bson.M{"Value": Value}}
+	filter := bson.M{"_id": record.Key}
+	update := bson.M{"$set": bson.M{"Value": record.Value}}
 	_, err := collection.UpdateOne(context.Background(), filter, update, options.Update().SetUpsert(true))
 	return err
 }
 
-func (m *MongoDB) GetValueByKeyName(CollectionBucketName string, Key string) (string, error) {
+func (m *MongoDB) GetValueByKeyName(CollectionBucketName string, Key string) (*QataiDatabaseRecord, error) {
 	collection := m.client.Database(m.dbName).Collection(CollectionBucketName)
 	var result struct {
-		Value string
+		Value string `bson:"value"`
 	}
 	filter := bson.M{"_id": Key}
 	err := collection.FindOne(context.Background(), filter).Decode(&result)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return result.Value, nil
+	return &QataiDatabaseRecord{Key, result.Value}, nil
 }
 
-func (db *MongoDB) GetAllRecordForCollectionBucket(CollectionBucketName string) ([]string, error) {
-	var results []string
+func (db *MongoDB) GetAllRecordForCollectionBucket(CollectionBucketName string) ([]QataiDatabaseRecord, error) {
+	var results []QataiDatabaseRecord
 	collection := db.client.Database(db.dbName).Collection(CollectionBucketName)
 	cursor, err := collection.Find(context.Background(), bson.D{})
 	if err != nil {
@@ -63,17 +65,33 @@ func (db *MongoDB) GetAllRecordForCollectionBucket(CollectionBucketName string) 
 	defer cursor.Close(context.Background())
 
 	for cursor.Next(context.Background()) {
-		var doc bson.M
+		// Define a map that will hold the document data
+		var doc map[string]interface{}
 		err = cursor.Decode(&doc)
 		if err != nil {
 			return nil, err
 		}
-		for _, value := range doc {
-			results = append(results, fmt.Sprintf("%v", value))
+		// Check if the keys "_id" and "Value" exist in the doc map
+		if id, ok := doc["_id"].(string); ok {
+			if value, ok := doc["Value"].(string); ok {
+				results = append(results, QataiDatabaseRecord{Key: id, Value: value})
+			}
 		}
 	}
 	if err = cursor.Err(); err != nil {
 		return nil, err
 	}
 	return results, nil
+}
+func (db *MongoDB) ClearAllRecordsInCollection(CollectionBucketName string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// call cancel func to avoid context leak
+	defer cancel()
+
+	err := db.client.Database(db.dbName).Collection(CollectionBucketName).Drop(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

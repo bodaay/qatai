@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 
+	"github.com/bodaay/qatai/pkg/db"
 	"github.com/labstack/echo/v4"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
@@ -147,21 +149,25 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 }
 
 func TestDB() {
-	// mdb, err := db.InitMongoDB("mongodb://localhost:27017", "qatai")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// os.MkdirAll("data", os.ModePerm)
-	// bboltDbPath := path.Join("data", "bbolt.db")
-	// bdb, err := db.InitBBoltDB(bboltDbPath)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// // mdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
-	// // bdb.SetConfig(&db.Config{Key: "TestKey", Value: "TestValue"})
-	// fmt.Println(mdb.GetConfig("TestKey"))
-	// fmt.Println(bdb.GetConfig("TestKey"))
-	// fmt.Println(mdb.CheckUserExists("khalefa@whatever.com"))
-	// fmt.Println(bdb.CheckUserExists("khalefa@whatever.com"))
+	mdb, err := db.InitNewMongoDB("mongodb://localhost:27017", "qatai")
+	if err != nil {
+		panic(err)
+	}
+	os.MkdirAll("data", os.ModePerm)
+	bboltDbPath := path.Join("data", "bbolt.db")
+	bdb, err := db.InitNewBoltDB(bboltDbPath)
+	if err != nil {
+		panic(err)
+	}
+	db.ClearAllConfig(mdb)
+	db.ClearAllConfig(bdb)
+	db.SetConfig(mdb, &db.Config{Key: "TestKey", Value: "TestValue"})
+	db.SetConfig(mdb, &db.Config{Key: "TestKey2", Value: "TestValue2"})
+	db.SetConfig(bdb, &db.Config{Key: "TestKey", Value: "TestValue"})
+	db.SetConfig(bdb, &db.Config{Key: "TestKey2", Value: "TestValue2"})
+	fmt.Println(db.GetConfig(mdb, "TestKey"))
+	fmt.Println(db.GetConfig(bdb, "TestKey"))
 
+	fmt.Println(db.GetAllConfig(mdb))
+	fmt.Println(db.GetAllConfig(bdb))
 }
