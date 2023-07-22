@@ -5,12 +5,12 @@ type Config struct {
 	Value string `json:"value"`
 }
 
-const collection_bucket_name = "config"
+const collection_bucket_name_config = "config"
 
 // BBolt
 func GetConfig(db QataiDatabase, key string) (*Config, error) {
 	var config Config
-	v, err := db.GetValueByKeyName(collection_bucket_name, key)
+	v, err := db.GetValueByKeyName(collection_bucket_name_config, key)
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +21,7 @@ func GetConfig(db QataiDatabase, key string) (*Config, error) {
 
 func SetConfig(db QataiDatabase, config *Config) error {
 	record := QataiDatabaseRecord(*config)
-	err := db.SetValueByKeyName(collection_bucket_name, &record)
+	err := db.SetValueByKeyName(collection_bucket_name_config, &record)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func SetConfig(db QataiDatabase, config *Config) error {
 
 func GetAllConfig(db QataiDatabase) ([]Config, error) {
 	var configs []Config
-	values, err := db.GetAllRecordForCollectionBucket(collection_bucket_name)
+	values, err := db.GetAllRecordForCollectionBucket(collection_bucket_name_config)
 	if err != nil {
 		return nil, err
 	}
@@ -42,5 +42,5 @@ func GetAllConfig(db QataiDatabase) ([]Config, error) {
 }
 
 func ClearAllConfig(db QataiDatabase) error {
-	return db.ClearAllRecordsInCollection(collection_bucket_name)
+	return db.ClearAllRecordsInCollection(collection_bucket_name_config)
 }

@@ -11,3 +11,8 @@ type User struct {
 	LastLoginTime string   `json:"last_login_time"`
 	ChatsIDs      []string `json:"chats"`
 }
+
+func AddUpdateUser(db *QataiDatabase, user *User, updateIfExists bool) error {
+
+	return nil
+}
