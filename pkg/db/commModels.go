@@ -71,19 +71,65 @@ func AddUpdateModel(db QataiDatabase, m *LLMModel, updateIfExists bool) error {
 	if found && !updateIfExists {
 		return fmt.Errorf("another model has same end point, host: %s:%d ", host, port)
 	}
-	uuidV4 := uuid.New().String() //TODO: look into that panic crap for this
 
-	if updateIfExists {
-		uuidV4 = uuid.New().String()
+	if m.UUID == "" {
+		m.UUID = uuid.New().String()
 	}
+
 	marshaleld, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
 
-	err = db.SetValueByKeyName(collection_bucket_name_models, &QataiDatabaseRecord{Key: uuidV4, Value: string(marshaleld)})
+	err = db.SetValueByKeyName(collection_bucket_name_models, &QataiDatabaseRecord{Key: m.UUID, Value: string(marshaleld)})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+func GetAllModels(db QataiDatabase) ([]LLMModel, error) {
+	var mmodels []LLMModel
+	values, err := db.GetAllRecordForCollectionBucket(collection_bucket_name_models)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, v := range values {
+		var m LLMModel
+		err := json.Unmarshal([]byte(v.Value), &m)
+		if err != nil {
+			return nil, err
+		}
+		mmodels = append(mmodels, m)
+	}
+
+	return mmodels, nil
+}
+
+func GetModelByName(db QataiDatabase, modelName string) (*LLMModel, error) {
+	models, err := GetAllModels(db)
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range models {
+		if m.Name == modelName {
+			return &m, nil
+		}
+	}
+	return nil, fmt.Errorf("no model found matching this name: %s", modelName)
+}
+func GetModelByUUID(db QataiDatabase, uuid string) (*LLMModel, error) {
+	models, err := GetAllModels(db)
+	if err != nil {
+		return nil, err
+	}
+	for _, m := range models {
+		if m.UUID == uuid {
+			return &m, nil
+		}
+	}
+	return nil, fmt.Errorf("no model found matching this uuid: %s", uuid)
+}
+func ClearAllModels(db QataiDatabase) error {
+	return db.ClearAllRecordsInCollection(collection_bucket_name_models)
 }

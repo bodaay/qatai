@@ -1,7 +1,7 @@
 package db
 
 type User struct {
-	ID            string   `json:"id"`
+	UUID          string   `json:"uuid"`
 	Email         string   `json:"email"`
 	Name          string   `json:"name"`
 	Salt          string   `json:"salt"`

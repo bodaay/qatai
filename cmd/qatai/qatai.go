@@ -11,7 +11,9 @@ import (
 	"path"
 
 	"github.com/bodaay/qatai/pkg/db"
+	"github.com/bodaay/qatai/pkg/models"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
 )
@@ -170,4 +172,35 @@ func TestDB() {
 
 	fmt.Println(db.GetAllConfig(mdb))
 	fmt.Println(db.GetAllConfig(bdb))
+
+	//Test Creating models:
+	db.ClearAllModels(mdb)
+	db.ClearAllModels(bdb)
+	endpoints := []db.LLMEndPoint{
+		{Host: "gpu01.yawal.io", Port: 8080, UseSSL: false},
+		// {Host: "localhost", Port: 8081, UseSSL: false},
+	}
+
+	prompts := []db.LLMPrompts{
+		{Title: "Test title", Prompt: "Test prompt", PromptImage: "Test Image"},
+	}
+
+	params := db.LLMParameters{
+		Temperature:        0.95,
+		Top_P:              0.9,
+		RepetitionPenality: 1.0,
+		Truncate:           1000,
+		MaxNewTokens:       1024,
+	}
+
+	model := models.NewLLMModel("meta-llama/Llama-2-13b-chat-hf", "LLaMa V2 13B parameters", "", endpoints, prompts, params)
+
+	if err := db.AddUpdateModel(mdb, model, false); err != nil {
+		log.Errorf("Failed to add/update model: %s", err.Error())
+	}
+	if err := db.AddUpdateModel(bdb, model, false); err != nil {
+		log.Errorf("Failed to add/update model: %s", err.Error())
+	}
+	fmt.Println(db.GetAllModels(mdb))
+	fmt.Println(db.GetAllModels(bdb))
 }
