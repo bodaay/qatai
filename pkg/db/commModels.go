@@ -9,11 +9,19 @@ import (
 
 const collection_bucket_name_models = "models"
 
+type LLMProvider string
+
+const (
+	OPENAI LLMProvider = "openai"
+	HFTGI  LLMProvider = "tgi"
+)
+
 type LLMModel struct {
 	UUID        string        `json:"uuid"`
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
 	PrePrompt   string        `json:"prePrompt"`
+	Provider    LLMProvider   `json:"provider"`
 	Prompts     []LLMPrompts  `json:"prompts"`
 	Parameters  LLMParameters `json:"parameters"`
 	EndPoints   []LLMEndPoint `json:"endPoints"`

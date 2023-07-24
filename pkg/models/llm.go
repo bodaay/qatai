@@ -13,7 +13,7 @@ import (
 )
 
 // Initialise LLMModel
-func NewLLMModel(name, description, prePrompt string, endpoints []db.LLMEndPoint, prompts []db.LLMPrompts, params db.LLMParameters) *db.LLMModel {
+func NewLLMModel(name, description, provider, prePrompt string, endpoints []db.LLMEndPoint, prompts []db.LLMPrompts, params db.LLMParameters) *db.LLMModel {
 	return &db.LLMModel{
 		Name:        name,
 		Description: description,
@@ -24,7 +24,6 @@ func NewLLMModel(name, description, prePrompt string, endpoints []db.LLMEndPoint
 	}
 }
 
-// ModelInfoResponse Seriously who is writing these anymore, just give the respones from curl request and ask chatGPT to write this
 type TgiModelEndPoint struct {
 	ModelID               string    `json:"model_id"`
 	ModelSha              string    `json:"model_sha"`
@@ -53,7 +52,7 @@ type TgiModelEndPoint struct {
 	// DockerLabel           string  `json:"docker_label"`
 }
 
-func GetTgiModel(uuid string, host string, port int16, useSSL bool, skipVerify bool) (*TgiModelEndPoint, error) {
+func GetInfo(uuid string, host string, port int16, useSSL bool, skipVerify bool) (*TgiModelEndPoint, error) {
 
 	scheme := "http"
 	if useSSL {
@@ -77,6 +76,10 @@ func GetTgiModel(uuid string, host string, port int16, useSSL bool, skipVerify b
 		return nil, fmt.Errorf("failed to get response: %w", err)
 	}
 	defer response.Body.Close()
+
+	if response.StatusCode >= 400 {
+		return nil, fmt.Errorf("failed to get response, status code: %d", response.StatusCode)
+	}
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
