@@ -8,23 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/bodaay/qatai/pkg/db"
 )
 
-// Initialise LLMModel
-func NewLLMModel(name, description, provider, prePrompt string, endpoints []db.LLMEndPoint, prompts []db.LLMPrompts, params db.LLMParameters) *db.LLMModel {
-	return &db.LLMModel{
-		Name:        name,
-		Description: description,
-		PrePrompt:   prePrompt,
-		EndPoints:   endpoints,
-		Prompts:     prompts,
-		Parameters:  params,
-	}
-}
-
-type TgiModelEndPoint struct {
+type Model struct {
 	ModelID               string    `json:"model_id"`
 	ModelSha              string    `json:"model_sha"`
 	ModelDtype            string    `json:"model_dtype"`
@@ -52,7 +38,7 @@ type TgiModelEndPoint struct {
 	// DockerLabel           string  `json:"docker_label"`
 }
 
-func GetInfo(uuid string, host string, port int16, useSSL bool, skipVerify bool) (*TgiModelEndPoint, error) {
+func GetInfo(uuid string, host string, port int16, useSSL bool, skipVerify bool) (*Model, error) {
 
 	scheme := "http"
 	if useSSL {
@@ -86,7 +72,7 @@ func GetInfo(uuid string, host string, port int16, useSSL bool, skipVerify bool)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	var infoResponse TgiModelEndPoint
+	var infoResponse Model
 	if err := json.Unmarshal(body, &infoResponse); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal json: %w", err)
 	}

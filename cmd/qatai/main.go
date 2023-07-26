@@ -7,7 +7,8 @@ import (
 	llog "log"
 	"os"
 
-	"github.com/bodaay/qatai/pkg/log"
+	"qatai/pkg/log"
+
 	"go.uber.org/zap"
 )
 

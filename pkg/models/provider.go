@@ -1,9 +1,7 @@
 package models
 
-import "io"
-
 type Provider interface {
-	GetInfo(uuid string, host string, port int16, useSSL bool, skipVerify bool) (*ModelEndPoint, error)
-	Generate(prompt string, model *ModelEndPoint, params *ModelParameters) (string, error)
-	GenerateStream(prompt string, model *ModelEndPoint, params *ModelParameters) (io.ReadCloser, error)
+	// GetInfo(m *Model) (*ModelEndPoint, error)
+	// Generate(prompt string, m *Model) (string, error)
+	// GenerateStream(prompt string, model *ModelEndPoint, params *ModelParameters) (io.ReadCloser, error)
 }

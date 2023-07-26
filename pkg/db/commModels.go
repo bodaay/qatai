@@ -21,10 +21,19 @@ type LLMModel struct {
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
 	PrePrompt   string        `json:"prePrompt"`
+	Tokens      LLMTokens     `json:"tokens"`
+	Stops       []string      `json:"stops"`
 	Provider    LLMProvider   `json:"provider"`
 	Prompts     []LLMPrompts  `json:"prompts"`
 	Parameters  LLMParameters `json:"parameters"`
 	EndPoints   []LLMEndPoint `json:"endPoints"`
+}
+
+type LLMTokens struct {
+	SystemToken    string `json:"systemToken"`
+	UserToken      string `json:"userToken"`
+	AssistantToken string `json:"assistantToken"`
+	FunctionToken  string `json:"functionToken"`
 }
 
 type LLMPrompts struct {
@@ -45,6 +54,18 @@ type LLMEndPoint struct {
 	Host   string `json:"host"`
 	Port   int16  `json:"port"`
 	UseSSL bool   `json:"useSSL"`
+}
+
+// Initialise LLMModel
+func NewLLMModel(name string, description string, provider LLMProvider, prePrompt string, tokens LLMTokens, stops []string, endpoints []LLMEndPoint, prompts []LLMPrompts, params LLMParameters) *LLMModel {
+	return &LLMModel{
+		Name:        name,
+		Description: description,
+		PrePrompt:   prePrompt,
+		EndPoints:   endpoints,
+		Prompts:     prompts,
+		Parameters:  params,
+	}
 }
 
 func AddUpdateModel(db QataiDatabase, m *LLMModel, updateIfExists bool) error {

@@ -10,8 +10,9 @@ import (
 	"os/signal"
 	"path"
 
-	"github.com/bodaay/qatai/pkg/db"
-	"github.com/bodaay/qatai/pkg/models"
+	"qatai/pkg/db"
+	"qatai/pkg/models"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -189,11 +190,16 @@ func TestDB() {
 		Temperature:        0.95,
 		Top_P:              0.9,
 		RepetitionPenality: 1.0,
-		Truncate:           1000,
+		Truncate:           2048,
 		MaxNewTokens:       1024,
 	}
-
-	model := models.NewLLMModel("meta-llama/Llama-2-13b-chat-hf", "LLaMa V2 13B parameters", "", endpoints, prompts, params)
+	tokens := db.LLMTokens{
+		SystemToken:    "<<sys>>",
+		UserToken:      "[INST]",
+		AssistantToken: "[/INST]",
+		FunctionToken:  "",
+	}
+	model := db.NewLLMModel("meta-llama/Llama-2-13b-chat-hf", "LLaMa V2 13B parameters", db.HFTGI, "<<SYS>>\n You are a helpful, respectful and honest assistant. <</SYS>>", tokens, []string{"</s>"}, endpoints, prompts, params)
 
 	if err := db.AddUpdateModel(mdb, model, false); err != nil {
 		log.Errorf("Failed to add/update model: %s", err.Error())
@@ -203,4 +209,26 @@ func TestDB() {
 	}
 	fmt.Println(db.GetAllModels(mdb))
 	fmt.Println(db.GetAllModels(bdb))
+
+	uReq := &models.UniversalRequest{
+		Messages: []models.Message{
+			{
+				Role:    "[INST]", //this later we have to pull it from the config of the LLM Model
+				Content: "Hi How Are you!",
+			},
+			{
+				Role:    "[/INST]",
+				Content: "Hi How Are you!",
+			},
+		},
+		Stream:           true,
+		Model:            "gpt-4",
+		Temperature:      1,
+		TopP:             0.95,
+		Stop:             []string{"</s>"},
+		N:                1,
+		PresencePenalty:  0,
+		FrequencyPenalty: 1.2,
+	}
+	models.DoGenerate(uReq, model)
 }
