@@ -14,7 +14,7 @@ import {
 import { useMediaQuery } from "@mantine/hooks";
 import { IconBrandGithub, IconPlus } from "@tabler/icons-react";
 import { useChatStore } from "@/stores/ChatStore";
-import { getModelInfo, modelInfos_llm } from "@/stores/ModelLLM";
+import { getModelInfo, modelInfos } from "@/stores/Model";
 import { useRouter } from "next/router";
 import { addChat, setNavOpened } from "@/stores/ChatActions";
 
@@ -101,7 +101,7 @@ export default function MuHeader({ children }: any) {
   const navOpened = useChatStore((state) => state.navOpened);
 
   const isSmall = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
-  const isKnownModel = modelInfos_llm[activeModel] !== undefined;
+  const isKnownModel = modelInfos[activeModel] !== undefined;
   const modelInfo = getModelInfo(activeModel);
 
   return (

@@ -4,7 +4,7 @@ import {
   updateSettingsForm,
 } from "@/stores/ChatActions";
 import { useChatStore } from "@/stores/ChatStore";
-import { getModelInfo } from "@/stores/ModelLLM";
+import { getModelInfo } from "@/stores/Model";
 import { Button, Menu, px } from "@mantine/core";
 import { IconCheck, IconDotsVertical } from "@tabler/icons-react";
 import React, { useEffect } from "react";

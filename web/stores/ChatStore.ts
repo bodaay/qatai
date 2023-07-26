@@ -29,11 +29,6 @@ export const excludeFromState = [
 ];
 
 interface SettingsForm {
-  //Local LLM
-  model_llm: string;
-  temperature_llm: number;
-  max_tokens_llm: number;
-  repetion_penalty_llm: number;
   // GPT
   model: string;
   temperature: number;
@@ -61,19 +56,12 @@ interface SettingsForm {
 }
 
 export const defaultSettings = {
-  //LocalLLM
-  model_llm: "LLama-7b-chat",
-  temperature_llm: 0.9,
-  repetion_penalty_llm: 1.2,
-  max_tokens_llm: 1024,
-  // GPT
   model: "gpt-3.5-turbo",
   temperature: 1,
   top_p: 1,
   n: 1,
   stop: "",
   max_tokens: 0,
-  
   presence_penalty: 0,
   frequency_penalty: 0,
   logit_bias: "",

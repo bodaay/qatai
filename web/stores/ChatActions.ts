@@ -5,7 +5,7 @@ import { getChatById, updateChatMessages } from "./utils";
 import { NextRouter } from "next/router";
 import { APIState, ChatState, useChatStore } from "./ChatStore";
 import { submitMessage } from "./SubmitMessage";
-import { fetchModels } from "./LocalLLM";
+import { fetchModels } from "./OpenAI";
 
 const get = useChatStore.getState;
 const set = useChatStore.setState;

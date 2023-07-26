@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 
-import { testKey as testKeyOpenAI } from "@/stores/LocalLLM";
+import { testKey as testKeyOpenAI } from "@/stores/OpenAI";
 import { testKey as testKey11Labs } from "@/stores/ElevenLabs";
 import { testKey as testKeyAzure } from "@/stores/AzureSDK";
 

@@ -1,7 +1,7 @@
 import { IncomingMessage } from "http";
-import http from "http";
+import https from "https";
 import { Message, truncateMessages, countTokens } from "./Message";
-import { getModelInfo } from "./ModelLLM";
+import { getModelInfo } from "./Model";
 import axios from "axios";
 
 export function assertIsError(e: any): asserts e is Error {
@@ -56,16 +56,15 @@ export async function _streamCompletion(
   callback?: ((res: IncomingMessage) => void) | undefined,
   errorCallback?: ((res: IncomingMessage, body: string) => void) | undefined
 ) {
-  
-  const req = http.request(
+  const req = https.request(
     {
-      hostname: "gpu02.yawal.io",
-      port: 8080,
-      path: "/generate",
+      hostname: "api.openai.com",
+      port: 443,
+      path: "/v1/chat/completions",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       signal: abortController?.signal,
     },
@@ -83,9 +82,9 @@ export async function _streamCompletion(
       callback?.(res);
     }
   );
-  
+
   req.write(payload);
-  console.log(payload)
+
   req.end();
 }
 
@@ -135,40 +134,21 @@ export async function streamCompletion(
     Object.entries(params).filter(([key]) => paramKeys.includes(key))
   );
 
-  // const payload = JSON.stringify({
-  //   messages: submitMessages.map(({ role, content }) => ({ role, content })),
-  //   stream: true,
-  //   ...{
-  //     ...submitParams,
-  //     logit_bias: JSON.parse(params.logit_bias || "{}"),
-  //     // 0 == unlimited
-  //     max_tokens: params.max_tokens || undefined,
-  //   },
-  // });
   const payload = JSON.stringify({
-    inputs: "My name is Olivier and I", // update with actual inputs
-    parameters: {
-      "best_of": 1,
-      "decoder_input_details": true,
-      "details": true,
-      "do_sample": false,
-      "max_new_tokens": 1024,
-      "repetition_penalty": 1.2,
-      "return_full_text": false,
-      "seed": null,
-      "stop": [ "</s>" ],
-      "temperature": 0.9,
-      "top_k": 40,
-      "top_p": 0.95,
-      "truncate": null,
-      "typical_p": 0.95,
-      "watermark": false
+    messages: submitMessages.map(({ role, content }) => ({ role, content })),
+    stream: true,
+    ...{
+      ...submitParams,
+      logit_bias: JSON.parse(params.logit_bias || "{}"),
+      // 0 == unlimited
+      max_tokens: params.max_tokens || undefined,
     },
   });
+
   let buffer = "";
 
   const successCallback = (res: IncomingMessage) => {
-    res.on("generated_text", (chunk) => {
+    res.on("data", (chunk) => {
       if (abortController?.signal.aborted) {
         res.destroy();
         endCallback?.(0);
@@ -179,9 +159,8 @@ export async function streamCompletion(
       const allMessages = chunk.toString().split("\n\n");
       for (const message of allMessages) {
         // Remove first 5 characters ("data:") of response
-        // const cleaned = message.toString().slice(5);
-        console.log(message)
-        const cleaned = message.toString().slice(14+1);
+        const cleaned = message.toString().slice(5);
+
         if (!cleaned || cleaned === " [DONE]") {
           return;
         }

@@ -121,20 +121,14 @@ export default function SettingsModal({ close }: { close: () => void }) {
           close();
         })}
       >
-        <Tabs defaultValue="localllm">
+        <Tabs defaultValue="openai">
           <Tabs.List>
-          <Tabs.Tab
-              value="localllm"
-              icon={<IconSettings size={px("0.8rem")} />}
-            >
-              LocalLLM-TGI
-            </Tabs.Tab>
-            {/* <Tabs.Tab
+            <Tabs.Tab
               value="openai"
               icon={<IconSettings size={px("0.8rem")} />}
             >
               OpenAI
-            </Tabs.Tab> */}
+            </Tabs.Tab>
             <Tabs.Tab
               value="azure"
               icon={<IconMicrophone size={px("0.8rem")} />}
@@ -145,167 +139,7 @@ export default function SettingsModal({ close }: { close: () => void }) {
               ElevenLabs
             </Tabs.Tab>
           </Tabs.List>
-          <Tabs.Panel value="localllm" pt="xs">
-            <Accordion defaultValue="general">
-              <Accordion.Item value="general">
-                <Accordion.Control>LocalLLM</Accordion.Control>
-                <Accordion.Panel>
-                  <Select
-                    required
-                    label="Model"
-                    placeholder="Select a model"
-                    value={form.values.model_llm}
-                    onChange={(value) => form.setFieldValue("model_llm", value!)}
-                    data={modelChoicesChat.map((model) => ({
-                      label: model,
-                      value: model,
-                    }))}
-                  ></Select>
-                  <Text mt="lg" size="sm">
-                    Sampling temperature ({form.values.temperature_llm})
-                  </Text>
-                  <Slider
-                    value={form.values.temperature_llm}
-                    min={0.1}
-                    max={2}
-                    step={0.1}
-                    precision={1}
-                    onChange={(value) =>
-                      form.setFieldValue("temperature_llm", value)
-                    }
-                  />
-                  <Switch
-                    mt="xl"
-                    checked={form.values.auto_title}
-                    label="Automatically use model to find chat title"
-                    onChange={(event) =>
-                      form.setFieldValue(
-                        "auto_title",
-                        event.currentTarget.checked
-                      )
-                    }
-                  />
-                </Accordion.Panel>
-              </Accordion.Item>
-
-              <Accordion.Item value="advanced">
-                <Accordion.Control>LocalLLM - Advanced</Accordion.Control>
-                <Accordion.Panel>
-                  <Text mt="lg" size="sm">
-                    Top P ({form.values.top_p})
-                  </Text>
-                  <Slider
-                    value={form.values.top_p}
-                    min={0}
-                    max={1}
-                    step={0.01}
-                    precision={2}
-                    onChange={(value) => form.setFieldValue("top_p", value)}
-                  />
-
-                  <Text mt="lg" size="sm">
-                    N ({form.values.n})
-                  </Text>
-                  <Slider
-                    value={form.values.n}
-                    min={1}
-                    max={10}
-                    step={1}
-                    onChange={(value) => form.setFieldValue("n", value)}
-                  />
-                  <TextInput
-                    mt="lg"
-                    label="Stop"
-                    placeholder="Up to 4 sequences where the API will stop generating further tokens"
-                    {...form.getInputProps("stop")}
-                  />
-
-                  <Text mt="lg" size="sm">
-                    Max Tokens (
-                    {form.values.max_tokens_llm === 0
-                      ? "Unlimited"
-                      : form.values.max_tokens_llm}
-                    )
-                  </Text>
-                  <Slider
-                    value={form.values.max_tokens_llm}
-                    min={1}
-                    max={4000}
-                    step={1}
-                    onChange={(value) =>
-                      form.setFieldValue("max_tokens_llm", value)
-                    }
-                  />
-
-                  <Text mt="lg" size="sm">
-                    Presence Penalty ({form.values.presence_penalty})
-                  </Text>
-                  <Slider
-                    value={form.values.presence_penalty}
-                    min={-2}
-                    max={2}
-                    step={0.1}
-                    precision={1}
-                    onChange={(value) =>
-                      form.setFieldValue("presence_penalty", value)
-                    }
-                  />
-
-                  <Text mt="lg" size="sm">
-                    Frequency Penalty ({form.values.frequency_penalty})
-                  </Text>
-                  <Slider
-                    value={form.values.frequency_penalty}
-                    min={-2}
-                    max={2}
-                    step={0.1}
-                    precision={1}
-                    onChange={(value) =>
-                      form.setFieldValue("frequency_penalty", value)
-                    }
-                  />
-
-                  <TextInput
-                    mt="lg"
-                    label="Logit Bias"
-                    placeholder='{"token_id": 0.5, "token_id_2": -0.5}'
-                    {...form.getInputProps("logit_bias")}
-                  />
-                </Accordion.Panel>
-              </Accordion.Item>
-              {/* <Accordion.Item value="whisper">
-                <Accordion.Control>Whisper (Speech to Text)</Accordion.Control>
-                <Accordion.Panel>
-                  <Switch
-                    pb="md"
-                    checked={form.values.auto_detect_language}
-                    label="Auto-detect language"
-                    onChange={(event) => {
-                      form.setFieldValue(
-                        "auto_detect_language",
-                        event.currentTarget.checked
-                      );
-                    }}
-                  />
-
-                  <Autocomplete
-                    disabled={form.values.auto_detect_language}
-                    label="Spoken language (choosing gives better accuracy)"
-                    value={form.values.spoken_language}
-                    onChange={(value) => {
-                      form.setFieldValue("spoken_language", value!);
-                      form.setFieldValue(
-                        "spoken_language_code",
-                        langDisplayToCode[value!]
-                      );
-                    }}
-                    data={getLanguages().map((lang) => lang.label)}
-                  />
-                </Accordion.Panel>
-              </Accordion.Item> */}
-            </Accordion>
-          </Tabs.Panel>
-          {/* <Tabs.Panel value="openai" pt="xs">
+          <Tabs.Panel value="openai" pt="xs">
             <Accordion defaultValue="general">
               <Accordion.Item value="general">
                 <Accordion.Control>GPT - General</Accordion.Control>
@@ -464,7 +298,7 @@ export default function SettingsModal({ close }: { close: () => void }) {
                 </Accordion.Panel>
               </Accordion.Item>
             </Accordion>
-          </Tabs.Panel> */}
+          </Tabs.Panel>
           <Tabs.Panel value="azure" pt="xs">
             <Title pt="xs" pb="md" order={4}>
               Speech to Text

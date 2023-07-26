@@ -5,9 +5,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // trailingSlash: false,
-  // cleanUrls: false,
-  // distDir: 'dist',
 };
 
 module.exports = nextConfig;

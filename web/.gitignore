@@ -11,7 +11,7 @@
 
 # next.js
 /.next/
-# /out/
+/out/
 
 # production
 /build
@@ -37,6 +37,4 @@ yarn-error.log*
 next-env.d.ts
 
 /audiofiles/
-
-
-dist/*
+dist/

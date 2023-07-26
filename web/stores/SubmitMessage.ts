@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import { Message } from "./Message";
-import { streamCompletion } from "./LocalLLM";
+import { streamCompletion } from "./OpenAI";
 import { getChatById, updateChatMessages } from "./utils";
 import { notifications } from "@mantine/notifications";
-import { getModelInfo } from "./ModelLLM";
+import { getModelInfo } from "./Model";
 import { useChatStore } from "./ChatStore";
 
 const get = useChatStore.getState;

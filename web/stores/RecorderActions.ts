@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Message } from "./Message";
 import { notifications } from "@mantine/notifications";
 import axios from "axios";
-import { assertIsError } from "@/stores/LocalLLM";
+import { assertIsError } from "@/stores/OpenAI";
 
 import { useChatStore } from "./ChatStore";
 import { delMessage, pushMessage, setApiState } from "./ChatActions";
