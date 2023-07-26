@@ -1,12 +1,15 @@
 package models
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"qatai/pkg/db"
+	"strings"
 )
 
 type TgiRequestBody struct {
@@ -15,42 +18,39 @@ type TgiRequestBody struct {
 }
 
 type TgiParameters struct {
-	MaxNewTokens        int      `json:"max_new_tokens"`     //required
-	Temperature         float64  `json:"temperature"`        //required
-	TopK                int      `json:"top_k"`              //required
-	TopP                float64  `json:"top_p"`              //required
-	Stop                []string `json:"stop"`               //required
-	RepetitionPenalty   float64  `json:"repetition_penalty"` //required
-	BestOf              int      `json:"best_of"`
-	DecoderInputDetails bool     `json:"decoder_input_details"`
-	Details             bool     `json:"details"`
-	DoSample            bool     `json:"do_sample"`
-	ReturnFullText      bool     `json:"return_full_text"`
-	Seed                *int     `json:"seed"`
-	Truncate            *string  `json:"truncate"`
-	TypicalP            float64  `json:"typical_p"`
-	Watermark           bool     `json:"watermark"`
+	MaxNewTokens      int      `json:"max_new_tokens"`     //required
+	Temperature       float64  `json:"temperature"`        //required
+	TopK              int      `json:"top_k"`              //required
+	TopP              float64  `json:"top_p"`              //required
+	Stop              []string `json:"stop"`               //required
+	RepetitionPenalty float64  `json:"repetition_penalty"` //required
+	// BestOf              int      `json:"best_of"`
+	DecoderInputDetails bool    `json:"decoder_input_details"`
+	Details             bool    `json:"details"`
+	DoSample            bool    `json:"do_sample"`
+	ReturnFullText      bool    `json:"return_full_text"`
+	Seed                *int    `json:"seed"`
+	Truncate            *string `json:"truncate"`
+	TypicalP            float64 `json:"typical_p"`
+	Watermark           bool    `json:"watermark"`
 }
 
 // TGI response structs
-type tgiToken struct {
-	ID      int     `json:"id"`
-	Text    string  `json:"text"`
-	Logprob float64 `json:"logprob"`
-	Special bool    `json:"special"`
-}
-
-type tgiDetails struct {
-	FinishReason    string `json:"finish_reason"`
-	GeneratedTokens int    `json:"generated_tokens"`
-	// Seed            int64      `json:"seed"`
-	Prefill []int      `json:"prefill"`
-	Tokens  []tgiToken `json:"tokens"`
-}
 
 type tgiResponse struct {
-	GeneratedText string     `json:"generated_text"`
-	Details       tgiDetails `json:"details"`
+	Token struct {
+		Id      int     `json:"id"`
+		Text    string  `json:"text"`
+		Logprob float64 `json:"logprob"`
+		Special bool    `json:"special"`
+	} `json:"token"`
+	Generated_text string `json:"generated_text"`
+
+	Details struct {
+		FinishReason    string `json:"finish_reason"`
+		GeneratedTokens int    `json:"generated_tokens"`
+		// Seed            int64  `json:"seed"`
+	} `json:"details"`
 }
 
 func replaceUniversalRoleWithModelRole(uni_role ChatRole, model *db.LLMModel) string {
@@ -100,7 +100,11 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	return &data
 }
 func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
+
 	url := "http://gpu01.yawal.io:8080/generate"
+	if uReq.Stream {
+		url = "http://gpu01.yawal.io:8080/generate_stream"
+	}
 	data := convertUniversalRequestToTGI(uReq, model)
 	//append one more of role assistant to prepare it for response
 	data.Inputs += replaceUniversalRoleWithModelRole(ASSISTANT_TOLE, model) + " "
@@ -115,16 +119,43 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
+	if uReq.Stream {
+		reader := bufio.NewReader(resp.Body)
 
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				log.Fatalln(err)
+			}
+
+			pos := strings.Index(line, "{")
+			if pos != -1 {
+				var data tgiResponse
+				err := json.Unmarshal([]byte(line[pos:]), &data)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				// process data here
+
+				log.Println(data)
+			}
+		}
+	} else {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(string(body))
+		tgiResponseObj := new(tgiResponse)
+		err = json.Unmarshal(body, &tgiResponseObj)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(tgiResponseObj.Generated_text)
 	}
-	tgiResponseObj := new(tgiResponse)
-	err = json.Unmarshal(body, &tgiResponseObj)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	log.Println(tgiResponseObj)
+
 	return nil
 }
