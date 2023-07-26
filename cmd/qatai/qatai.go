@@ -189,6 +189,7 @@ func TestDB() {
 	params := db.LLMParameters{
 		Temperature:        0.95,
 		Top_P:              0.9,
+		Top_K:              40,
 		RepetitionPenality: 1.0,
 		Truncate:           2048,
 		MaxNewTokens:       1024,
@@ -213,12 +214,12 @@ func TestDB() {
 	uReq := &models.UniversalRequest{
 		Messages: []models.Message{
 			{
-				Role:    "[INST]", //this later we have to pull it from the config of the LLM Model
-				Content: "Hi How Are you!",
+				Role:    "assistant", //this later we have to pull it from the config of the LLM Model
+				Content: "How can I help you today?",
 			},
 			{
-				Role:    "[/INST]",
-				Content: "Hi How Are you!",
+				Role:    "user",
+				Content: "what is the biggest country in the world?",
 			},
 		},
 		Stream:           true,

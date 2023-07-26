@@ -41,20 +41,16 @@ type tgiToken struct {
 }
 
 type tgiDetails struct {
-	FinishReason    string     `json:"finish_reason"`
-	GeneratedTokens int        `json:"generated_tokens"`
-	Seed            int64      `json:"seed"`
-	Prefill         []int      `json:"prefill"`
-	Tokens          []tgiToken `json:"tokens"`
+	FinishReason    string `json:"finish_reason"`
+	GeneratedTokens int    `json:"generated_tokens"`
+	// Seed            int64      `json:"seed"`
+	Prefill []int      `json:"prefill"`
+	Tokens  []tgiToken `json:"tokens"`
 }
 
 type tgiResponse struct {
 	GeneratedText string     `json:"generated_text"`
 	Details       tgiDetails `json:"details"`
-}
-
-func getRoleStringFromModel(role ChatRole, llmModel *db.LLMModel) {
-
 }
 
 func replaceUniversalRoleWithModelRole(uni_role ChatRole, model *db.LLMModel) string {
@@ -81,13 +77,13 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	data := TgiRequestBody{
 		Inputs: inputText,
 		Parameters: TgiParameters{
-			MaxNewTokens:      10,               //required
-			RepetitionPenalty: 1.03,             //required
-			Stop:              []string{"</s>"}, //required
-			Temperature:       0.9,              //required
-			TopK:              40,               //required
-			TopP:              0.95,             //required
-			TypicalP:          0.95,             //required
+			MaxNewTokens:      int(model.Parameters.MaxNewTokens), //required
+			RepetitionPenalty: req.FrequencyPenalty,               //required
+			Stop:              model.Stops,                        //required
+			Temperature:       model.Parameters.Temperature,       //required
+			TopK:              model.Parameters.Top_K,             //required
+			TopP:              0.95,                               //required
+			TypicalP:          0.95,                               //required
 			// BestOf:              1,
 			// DecoderInputDetails: false,
 			Details: true,
@@ -106,12 +102,14 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 	url := "http://gpu01.yawal.io:8080/generate"
 	data := convertUniversalRequestToTGI(uReq, model)
+	//append one more of role assistant to prepare it for response
+	data.Inputs += replaceUniversalRoleWithModelRole(ASSISTANT_TOLE, model) + " "
 	jsonRequest, err := json.Marshal(data)
 
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(jsonRequest)
+	log.Println(string(jsonRequest))
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonRequest))
 	if err != nil {
 		log.Fatalln(err)

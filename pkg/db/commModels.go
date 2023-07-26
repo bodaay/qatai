@@ -45,9 +45,10 @@ type LLMPrompts struct {
 type LLMParameters struct {
 	Temperature        float64 `json:"temperature"`
 	Top_P              float64 `json:"topP"`
+	Top_K              int     `json:"topK"`
 	RepetitionPenality float64 `json:"repetitionPenality"`
 	Truncate           int64   `json:"truncate"`
-	MaxNewTokens       int64   `json:"maxNewTokens"`
+	MaxNewTokens       int     `json:"maxNewTokens"`
 }
 
 type LLMEndPoint struct {
@@ -62,6 +63,9 @@ func NewLLMModel(name string, description string, provider LLMProvider, prePromp
 		Name:        name,
 		Description: description,
 		PrePrompt:   prePrompt,
+		Provider:    provider,
+		Tokens:      tokens,
+		Stops:       stops,
 		EndPoints:   endpoints,
 		Prompts:     prompts,
 		Parameters:  params,
