@@ -26,14 +26,14 @@ type TgiParameters struct {
 	Stop              []string `json:"stop"`               //required
 	RepetitionPenalty float64  `json:"repetition_penalty"` //required
 	// BestOf              int      `json:"best_of"`
-	DecoderInputDetails bool    `json:"decoder_input_details"`
-	Details             bool    `json:"details"`
-	DoSample            bool    `json:"do_sample"`
-	ReturnFullText      bool    `json:"return_full_text"`
-	Seed                *int    `json:"seed"`
-	Truncate            *string `json:"truncate"`
-	TypicalP            float64 `json:"typical_p"`
-	Watermark           bool    `json:"watermark"`
+	// DecoderInputDetails bool    `json:"decoder_input_details"`
+	Details bool `json:"details"`
+	// DoSample            bool    `json:"do_sample"`
+	ReturnFullText bool    `json:"return_full_text"`
+	Seed           *int    `json:"seed"`
+	Truncate       *int    `json:"truncate"`
+	TypicalP       float64 `json:"typical_p"`
+	Watermark      bool    `json:"watermark"`
 }
 
 // TGI response structs
@@ -87,8 +87,8 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 			TypicalP:          0.95,                         //required
 			// BestOf:              1,
 			// DecoderInputDetails: false,
-			Details:  true,
-			DoSample: false,
+			Details: true,
+			// DoSample: false,
 
 			// ReturnFullText:    true,
 			// Seed:              nil,
@@ -101,7 +101,7 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	return &data
 }
 
-func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
+func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan *chan string) *UniversalResponse {
 
 	url := "http://gpu01.yawal.io:8080/generate"
 	if uReq.Stream {
@@ -131,6 +131,9 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 			if err != nil {
 				if err == io.EOF {
 					//in case of stream, just to follow open ai standard, we have to send: "data: [DONE]"
+					if uRespChan != nil {
+						*uRespChan <- "\ndata: [DONE]"
+					}
 					break
 				}
 				log.Fatalln(err)
@@ -151,6 +154,9 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 					log.Fatalln(err)
 				}
 				log.Println(string(uresp_data))
+				if uRespChan != nil {
+					*uRespChan <- string(uresp_data)
+				}
 			}
 		}
 	} else {

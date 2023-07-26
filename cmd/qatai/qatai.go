@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path"
 
+	"qatai/pkg/api"
 	"qatai/pkg/db"
 	"qatai/pkg/models"
 
@@ -177,6 +178,9 @@ func TestDB() {
 	//Test Creating models:
 	db.ClearAllModels(mdb)
 	db.ClearAllModels(bdb)
+	//start the Generation API
+	go api.StartGeneartionServer()
+
 	endpoints := []db.LLMEndPoint{
 		{Host: "gpu01.yawal.io", Port: 8080, UseSSL: false},
 		// {Host: "localhost", Port: 8081, UseSSL: false},
@@ -231,5 +235,5 @@ func TestDB() {
 		PresencePenalty:  0,
 		FrequencyPenalty: 1.2,
 	}
-	models.DoGenerate(uReq, model)
+	models.DoGenerate(uReq, model, nil)
 }

@@ -1,5 +1,6 @@
 import { IncomingMessage } from "http";
 import https from "https";
+import http from "http";
 import { Message, truncateMessages, countTokens } from "./Message";
 import { getModelInfo } from "./Model";
 import axios from "axios";
@@ -49,6 +50,45 @@ export async function fetchModels(key: string): Promise<string[]> {
   }
 }
 
+// export async function _streamCompletion(
+//   payload: string,
+//   apiKey: string,
+//   abortController?: AbortController,
+//   callback?: ((res: IncomingMessage) => void) | undefined,
+//   errorCallback?: ((res: IncomingMessage, body: string) => void) | undefined
+// ) {
+//   const req = https.request(
+//     {
+//       hostname: "api.openai.com",
+//       port: 443,
+//       path: "/v1/chat/completions",
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${apiKey}`,
+//       },
+//       signal: abortController?.signal,
+//     },
+//     (res) => {
+//       if (res.statusCode !== 200) {
+//         let errorBody = "";
+//         res.on("data", (chunk) => {
+//           errorBody += chunk;
+//         });
+//         res.on("end", () => {
+//           errorCallback?.(res, errorBody);
+//         });
+//         return;
+//       }
+//       callback?.(res);
+//     }
+//   );
+
+//   req.write(payload);
+
+//   req.end();
+// }
+
 export async function _streamCompletion(
   payload: string,
   apiKey: string,
@@ -56,10 +96,10 @@ export async function _streamCompletion(
   callback?: ((res: IncomingMessage) => void) | undefined,
   errorCallback?: ((res: IncomingMessage, body: string) => void) | undefined
 ) {
-  const req = https.request(
+  const req = http.request(
     {
-      hostname: "api.openai.com",
-      port: 443,
+      hostname: "gpu01.yawal.io",
+      port: 5050,
       path: "/v1/chat/completions",
       method: "POST",
       headers: {
@@ -87,7 +127,6 @@ export async function _streamCompletion(
 
   req.end();
 }
-
 interface ChatCompletionParams {
   model: string;
   temperature: number;
