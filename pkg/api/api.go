@@ -10,6 +10,8 @@ import (
 
 	"github.com/gofiber/adaptor/v2"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 )
 
 type Client struct {
@@ -20,8 +22,20 @@ type DashBoard struct {
 	User uint
 }
 
-func StartGeneartionServer() {
+func StartGeneartionServer(WebFS http.FileSystem) {
 	app := fiber.New()
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
+	// Or extend your config for customization
+	app.Use(filesystem.New(filesystem.Config{
+		Root:         WebFS,
+		Browse:       true,
+		Index:        "index.html",
+		NotFoundFile: "404.html",
+		MaxAge:       3600,
+	}))
 	app.Post("/v1/chat/completions", adaptor.HTTPHandler(handler(generationHandler)))
 	app.Listen(":5050")
 }
@@ -39,7 +53,7 @@ func generationHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	timeout := time.After(1 * time.Second)
+	timeout := time.After(10 * time.Second)
 	select {
 	case ev := <-client.events:
 		var buf bytes.Buffer

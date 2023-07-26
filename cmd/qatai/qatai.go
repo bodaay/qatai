@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -125,12 +124,13 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	go func() {
 		mainLogger.Info(fmt.Sprintf("qatai (v%v) is running on %v ...", version, cmd.addr))
 		mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
-
-		SetupServer(e, cmd.config.logger.Named("http"))
-		err := e.Start(cmd.addr)
-		if err != http.ErrServerClosed {
-			mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
-		}
+		//start the Generation API
+		api.StartGeneartionServer(getFileSystem(false, cmd.config.logger.Named("http")))
+		// SetupServer(e, cmd.config.logger.Named("http"))
+		// err := e.Start(cmd.addr)
+		// if err != http.ErrServerClosed {
+		// 	mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
+		// }
 
 	}()
 
@@ -178,8 +178,6 @@ func TestDB() {
 	//Test Creating models:
 	db.ClearAllModels(mdb)
 	db.ClearAllModels(bdb)
-	//start the Generation API
-	go api.StartGeneartionServer()
 
 	endpoints := []db.LLMEndPoint{
 		{Host: "gpu01.yawal.io", Port: 8080, UseSSL: false},
