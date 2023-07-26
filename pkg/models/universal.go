@@ -4,7 +4,7 @@ type ChatRole string
 
 const (
 	SYSTEM_ROLE    ChatRole = "system"
-	ASSISTANT_TOLE ChatRole = "assistant"
+	ASSISTANT_ROLE ChatRole = "assistant"
 	USER_ROLE      ChatRole = "user"
 	FUNCTION_ROLE  ChatRole = "function"
 )
@@ -49,5 +49,36 @@ type UniversalResponse struct {
 	Created int      `json:"created"`
 	Model   string   `json:"model"`
 	Choices []Choice `json:"choices"`
-	Usage   Usage    `json:"usage"`
+	Usage   *Usage   `json:"usage"`
 }
+
+/* stream: false
+{
+  "id": "chatcmpl-7gRfHylYcsDGV9NLN3HEn3nRxoYxV",
+  "object": "chat.completion",
+  "created": 1690350475,
+  "model": "gpt-3.5-turbo-0613",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Yes, the biggest country in the world by land area is Russia."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 29,
+    "completion_tokens": 14,
+    "total_tokens": 43
+  }
+}
+*/
+/* stream: true
+data: {"id":"chatcmpl-7gRfDOBCCH81IVYamIoqNpJehg6eD","object":"chat.completion.chunk","created":1690350471,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"."},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-7gRfDOBCCH81IVYamIoqNpJehg6eD","object":"chat.completion.chunk","created":1690350471,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+*/

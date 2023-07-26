@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"qatai/pkg/db"
 	"strings"
+	"time"
 )
 
 type TgiRequestBody struct {
@@ -57,7 +58,7 @@ func replaceUniversalRoleWithModelRole(uni_role ChatRole, model *db.LLMModel) st
 	switch uni_role {
 	case SYSTEM_ROLE:
 		return model.Tokens.SystemToken
-	case ASSISTANT_TOLE:
+	case ASSISTANT_ROLE:
 		return model.Tokens.AssistantToken
 	case USER_ROLE:
 		return model.Tokens.UserToken
@@ -77,17 +78,17 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	data := TgiRequestBody{
 		Inputs: inputText,
 		Parameters: TgiParameters{
-			MaxNewTokens:      int(model.Parameters.MaxNewTokens), //required
-			RepetitionPenalty: req.FrequencyPenalty,               //required
-			Stop:              model.Stops,                        //required
-			Temperature:       model.Parameters.Temperature,       //required
-			TopK:              model.Parameters.Top_K,             //required
-			TopP:              0.95,                               //required
-			TypicalP:          0.95,                               //required
+			MaxNewTokens:      5,                            //int(model.Parameters.MaxNewTokens), //required
+			RepetitionPenalty: req.FrequencyPenalty,         //required
+			Stop:              model.Stops,                  //required
+			Temperature:       model.Parameters.Temperature, //required
+			TopK:              model.Parameters.Top_K,       //required
+			TopP:              0.95,                         //required
+			TypicalP:          0.95,                         //required
 			// BestOf:              1,
 			// DecoderInputDetails: false,
-			Details: true,
-			// DoSample:            false,
+			Details:  true,
+			DoSample: false,
 
 			// ReturnFullText:    true,
 			// Seed:              nil,
@@ -99,6 +100,7 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	}
 	return &data
 }
+
 func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 
 	url := "http://gpu01.yawal.io:8080/generate"
@@ -107,7 +109,7 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 	}
 	data := convertUniversalRequestToTGI(uReq, model)
 	//append one more of role assistant to prepare it for response
-	data.Inputs += replaceUniversalRoleWithModelRole(ASSISTANT_TOLE, model) + " "
+	data.Inputs += replaceUniversalRoleWithModelRole(ASSISTANT_ROLE, model) + " "
 	jsonRequest, err := json.Marshal(data)
 
 	if err != nil {
@@ -119,6 +121,8 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
+	//in openAI, we have to parse output in a different way, if we are doing it by stream or non stream
+	// with TGI, this works either way, Thanks GPT-4
 	if uReq.Stream {
 		reader := bufio.NewReader(resp.Body)
 
@@ -126,6 +130,7 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
+					//in case of stream, just to follow open ai standard, we have to send: "data: [DONE]"
 					break
 				}
 				log.Fatalln(err)
@@ -133,29 +138,103 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel) *UniversalResponse {
 
 			pos := strings.Index(line, "{")
 			if pos != -1 {
-				var data tgiResponse
-				err := json.Unmarshal([]byte(line[pos:]), &data)
+				var tgiResp tgiResponse
+				dataToParse := line[pos:]
+				err := json.Unmarshal([]byte(dataToParse), &tgiResp)
 				if err != nil {
 					log.Fatalln(err)
 				}
 				// process data here
-
-				log.Println(data)
+				uresp := convertTGIResponseToUniversalResponse(&tgiResp, model)
+				uresp_data, err := json.Marshal(uresp)
+				if err != nil {
+					log.Fatalln(err)
+				}
+				log.Println(string(uresp_data))
 			}
 		}
 	} else {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		log.Println(string(body))
+		// log.Println(string(body))
 		tgiResponseObj := new(tgiResponse)
 		err = json.Unmarshal(body, &tgiResponseObj)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		log.Println(tgiResponseObj.Generated_text)
+		uresp := convertTGIResponseToUniversalResponse(tgiResponseObj, model)
+		uresp_data, err := json.Marshal(uresp)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(string(uresp_data))
 	}
 
 	return nil
 }
+
+func convertTGIResponseToUniversalResponse(resp *tgiResponse, model *db.LLMModel) *UniversalResponse {
+	ures := &UniversalResponse{
+		ID:      fmt.Sprintf("chatcmpl-%d", resp.Token.Id),
+		Object:  "chat.completion",
+		Created: int(time.Now().Unix()),
+		Model:   model.Name,
+		Usage:   nil, //not gonna do that
+		Choices: []Choice{
+			{
+				Index: 0,
+				Message: Message{
+					Role:    string(ASSISTANT_ROLE),
+					Content: resp.Token.Text,
+				},
+				FinishReason: resp.Details.FinishReason,
+			},
+		},
+	}
+
+	return ures
+}
+
+//TGI
+/*
+
+2023/07/26 06:19:54 {"token":{"id":4234,"text":" country","logprob":0.0,"special":false},"generated_text":null,"details":null}
+
+2023/07/26 06:19:54 {"token":{"id":297,"text":" in","logprob":0.0,"special":false},"generated_text":null,"details":null}
+
+2023/07/26 06:19:54 {"token":{"id":278,"text":" the","logprob":0.0,"special":false},"generated_text":"The biggest country in the","details":{"finish_reason":"length","generated_tokens":5,"seed":1858748514924990677}}
+*/
+
+// OpenAI
+/* stream: false
+{
+  "id": "chatcmpl-7gRfHylYcsDGV9NLN3HEn3nRxoYxV",
+  "object": "chat.completion",
+  "created": 1690350475,
+  "model": "gpt-3.5-turbo-0613",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Yes, the biggest country in the world by land area is Russia."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 29,
+    "completion_tokens": 14,
+    "total_tokens": 43
+  }
+}
+*/
+/* stream: true
+data: {"id":"chatcmpl-7gRfDOBCCH81IVYamIoqNpJehg6eD","object":"chat.completion.chunk","created":1690350471,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{"content":"."},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-7gRfDOBCCH81IVYamIoqNpJehg6eD","object":"chat.completion.chunk","created":1690350471,"model":"gpt-3.5-turbo-0613","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+*/
