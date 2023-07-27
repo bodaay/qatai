@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -73,7 +74,7 @@ func NewqataiCommand() (*ffcli.Command, *Config) {
 	fs.BoolVar(&cmd.useMongo, "use_mongo", false, "use mongo db instead of bbolt")
 	fs.StringVar(&cmd.mongoHost, "mongo_host", "mongodb://localhost:27017", "mongo db connection string")
 	fs.StringVar(&cmd.db, "db", "~/.qatai/db", "Database directory path.")
-	fs.StringVar(&cmd.addr, "addr", ":8000", "TCP address to listen on, in the form \"host:port\".")
+	fs.StringVar(&cmd.addr, "addr", ":5050", "TCP address to listen on, in the form \"host:port\".")
 	fs.BoolVar(&cmd.version, "version", false, "Output version.")
 	fs.BoolVar(&cmd.version, "v", false, "Output version.")
 
@@ -132,12 +133,11 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 			panic(err)
 		}
 		TestDB(mdb, bdb)
-		api.StartGeneartionServer(getFileSystem(false, cmd.config.logger.Named("http")), bdb)
-		// SetupServer(e, cmd.config.logger.Named("http"))
-		// err := e.Start(cmd.addr)
-		// if err != http.ErrServerClosed {
-		// 	mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
-		// }
+		err = api.StartGeneartionServer(cmd.addr, getFileSystem(false, cmd.config.logger.Named("http")), bdb, cmd.config.logger.Named("http"))
+
+		if err != http.ErrServerClosed {
+			mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
+		}
 
 	}()
 

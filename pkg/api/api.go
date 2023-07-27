@@ -9,66 +9,39 @@ import (
 	"qatai/pkg/models"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"go.uber.org/zap"
 )
 
-func StartGeneartionServer(WebFS http.FileSystem, mydb db.QataiDatabase) {
-	app := fiber.New(
-		fiber.Config{
-			// EnablePrintRoutes: true,
-			StrictRouting: true,
-			AppName:       "QatAI",
-		},
-	)
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "*",
-	}))
-	// Initialize default config
-	app.Use(logger.New())
-
-	// Or extend your config for customization
-	// Logging remote IP and Port
-	app.Use(logger.New(logger.Config{
-		Format: "[${ip}]:${port} ${status} - ${method} ${path}\n",
-	}))
-
-	// Logging Request ID
-	app.Use(requestid.New())
-	app.Use(logger.New(logger.Config{
-		// For more options, see the Config section
-		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}​\n",
-	}))
-
-	// Changing TimeZone & TimeFormat
-	app.Use(logger.New(logger.Config{
-		Format:     "${pid} ${status} - ${method} ${path}\n",
-		TimeFormat: "02-Jan-2006",
-		TimeZone:   "America/New_York",
-	}))
-
-	app.Get("/ping", func(c *fiber.Ctx) error {
-		return c.JSON(c.App().Stack())
-	})
+func StartGeneartionServer(addr string, WebFS http.FileSystem, mydb db.QataiDatabase, httplogger *zap.Logger) error {
 
 	assetHandler := http.FileServer(WebFS)
 
 	e := echo.New()
+	e.Use(middleware.Recover())
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:    true,
+		LogStatus: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			httplogger.Info("request",
+				zap.String("URI", v.URI),
+				zap.Int("status", v.Status),
+			)
 
-	e.POST("/v1/chat/completions", sseHandler(mydb))
+			return nil
+		},
+	}))
+	e.POST("/v1/chat/completions", chatCompletionHandler(mydb))
 	e.GET("/*", echo.WrapHandler(assetHandler))
-	e.Start(":5050")
+	return e.Start(addr)
 
 }
 
-func sseHandler(mydb db.QataiDatabase) echo.HandlerFunc {
+func chatCompletionHandler(mydb db.QataiDatabase) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		c.Response().Header().Set(echo.HeaderContentType, "text/event-stream")
-		// c.Response().Header().Set(echo.HeaderXAccelBuffering, "no")
+		c.Response().Header().Set("X-Accel-Buffering", "no")
 		c.Response().Header().Set(echo.HeaderCacheControl, "no-cache")
 		c.Response().Header().Set(echo.HeaderConnection, "keep-alive")
 		c.Response().Header().Set("Transfer-Encoding", "chunked")
