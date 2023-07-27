@@ -11,7 +11,6 @@ import (
 
 	"qatai/pkg/api"
 	"qatai/pkg/db"
-	"qatai/pkg/models"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
@@ -116,8 +115,6 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	}
 	//db
 
-	TestDB()
-
 	//webserver
 	e := echo.New()
 	e.HideBanner = true
@@ -125,7 +122,18 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 		mainLogger.Info(fmt.Sprintf("qatai (v%v) is running on %v ...", version, cmd.addr))
 		mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
 		//start the Generation API
-		api.StartGeneartionServer(getFileSystem(false, cmd.config.logger.Named("http")))
+		mdb, err := db.InitNewMongoDB("mongodb://localhost:27017", "qatai")
+		if err != nil {
+			panic(err)
+		}
+		os.MkdirAll("data", os.ModePerm)
+		bboltDbPath := path.Join("data", "bbolt.db")
+		bdb, err := db.InitNewBoltDB(bboltDbPath)
+		if err != nil {
+			panic(err)
+		}
+		TestDB(mdb, bdb)
+		api.StartGeneartionServer(getFileSystem(true, cmd.config.logger.Named("http")), bdb)
 		// SetupServer(e, cmd.config.logger.Named("http"))
 		// err := e.Start(cmd.addr)
 		// if err != http.ErrServerClosed {
@@ -152,17 +160,8 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	return nil
 }
 
-func TestDB() {
-	mdb, err := db.InitNewMongoDB("mongodb://localhost:27017", "qatai")
-	if err != nil {
-		panic(err)
-	}
-	os.MkdirAll("data", os.ModePerm)
-	bboltDbPath := path.Join("data", "bbolt.db")
-	bdb, err := db.InitNewBoltDB(bboltDbPath)
-	if err != nil {
-		panic(err)
-	}
+func TestDB(mdb db.QataiDatabase, bdb db.QataiDatabase) {
+
 	db.ClearAllConfig(mdb)
 	db.ClearAllConfig(bdb)
 	db.SetConfig(mdb, &db.Config{Key: "TestKey", Value: "TestValue"})
@@ -202,7 +201,7 @@ func TestDB() {
 		AssistantToken: "[/INST]",
 		FunctionToken:  "",
 	}
-	model := db.NewLLMModel("meta-llama/Llama-2-13b-chat-hf", "LLaMa V2 13B parameters", db.HFTGI, "<<SYS>>\n You are a helpful, respectful and honest assistant. <</SYS>>", tokens, []string{"</s>"}, endpoints, prompts, params)
+	model := db.NewLLMModel("gpt-4-0613", "LLaMa V2 13B parameters", db.HFTGI, "<<SYS>>\n You are a helpful, respectful and honest assistant. <</SYS>>", tokens, []string{"</s>"}, endpoints, prompts, params)
 
 	if err := db.AddUpdateModel(mdb, model, false); err != nil {
 		log.Errorf("Failed to add/update model: %s", err.Error())
@@ -213,25 +212,25 @@ func TestDB() {
 	fmt.Println(db.GetAllModels(mdb))
 	fmt.Println(db.GetAllModels(bdb))
 
-	uReq := &models.UniversalRequest{
-		Messages: []models.Message{
-			{
-				Role:    "assistant", //this later we have to pull it from the config of the LLM Model
-				Content: "How can I help you today?",
-			},
-			{
-				Role:    "user",
-				Content: "what is the biggest country in the world?",
-			},
-		},
-		Stream:           true,
-		Model:            "gpt-4",
-		Temperature:      1,
-		TopP:             0.95,
-		Stop:             []string{"</s>"},
-		N:                1,
-		PresencePenalty:  0,
-		FrequencyPenalty: 1.2,
-	}
-	models.DoGenerate(uReq, model, nil)
+	// uReq := &models.UniversalRequest{
+	// 	Messages: []models.Message{
+	// 		{
+	// 			Role:    "assistant", //this later we have to pull it from the config of the LLM Model
+	// 			Content: "How can I help you today?",
+	// 		},
+	// 		{
+	// 			Role:    "user",
+	// 			Content: "what is the biggest country in the world?",
+	// 		},
+	// 	},
+	// 	Stream:           true,
+	// 	Model:            "gpt-4",
+	// 	Temperature:      1,
+	// 	TopP:             0.95,
+	// 	Stop:             []string{"</s>"},
+	// 	N:                1,
+	// 	PresencePenalty:  0,
+	// 	FrequencyPenalty: 1.2,
+	// }
+	// models.DoGenerate(uReq, model, nil)
 }

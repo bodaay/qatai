@@ -23,18 +23,21 @@ type UniversalRequest struct {
 	Temperature      float64           `json:"temperature"`
 	TopP             float64           `json:"top_p"`
 	N                int               `json:"n"`
-	Stop             []string          `json:"stop"`
+	Stop             string            `json:"stop"`
 	PresencePenalty  float64           `json:"presence_penalty"`
 	FrequencyPenalty float64           `json:"frequency_penalty"`
 	LogitBias        map[string]string `json:"logit_bias"`
 }
 
 // ****************** Universal Generate/Completion Response ***************************
-
+type Delta struct {
+	Content *string `json:"content,omitempty"`
+}
 type Choice struct {
-	Index        int     `json:"index"`
-	Message      Message `json:"message"`
-	FinishReason string  `json:"finish_reason"`
+	Index        int      `json:"index"`
+	Message      *Message `json:"message,omitempty"` //this actually whats returned in case stream: false
+	Delta        *Delta   `json:"delta,omitempty"`   //this actually whats returned in case its stream: true
+	FinishReason *string  `json:"finish_reason"`
 }
 
 type Usage struct {
@@ -49,7 +52,7 @@ type UniversalResponse struct {
 	Created int      `json:"created"`
 	Model   string   `json:"model"`
 	Choices []Choice `json:"choices"`
-	Usage   *Usage   `json:"usage"`
+	Usage   *Usage   `json:"usage,omitempty"`
 }
 
 /* stream: false

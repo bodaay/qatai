@@ -3,10 +3,12 @@ package models
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"qatai/pkg/db"
 	"strings"
@@ -75,16 +77,17 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 		inputText += replaceUniversalRoleWithModelRole(ChatRole(m.Role), model) + " "
 		inputText += m.Content + " \n"
 	}
+
 	data := TgiRequestBody{
 		Inputs: inputText,
 		Parameters: TgiParameters{
-			MaxNewTokens:      5,                            //int(model.Parameters.MaxNewTokens), //required
-			RepetitionPenalty: req.FrequencyPenalty,         //required
-			Stop:              model.Stops,                  //required
-			Temperature:       model.Parameters.Temperature, //required
-			TopK:              model.Parameters.Top_K,       //required
-			TopP:              0.95,                         //required
-			TypicalP:          0.95,                         //required
+			MaxNewTokens:      int(model.Parameters.MaxNewTokens),  //required
+			RepetitionPenalty: model.Parameters.RepetitionPenality, //required
+			Stop:              model.Stops,                         //required
+			Temperature:       model.Parameters.Temperature,        //required
+			TopK:              model.Parameters.Top_K,              //required
+			TopP:              0.95,                                //required
+			TypicalP:          0.95,                                //required
 			// BestOf:              1,
 			// DecoderInputDetails: false,
 			Details: true,
@@ -101,14 +104,28 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	return &data
 }
 
-func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan *chan string) *UniversalResponse {
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+
+	for i := range b {
+		val, _ := rand.Int(rand.Reader, big.NewInt(int64(len(letters))))
+		b[i] = letters[val.Int64()]
+	}
+
+	return string(b)
+}
+func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan chan string) *UniversalResponse {
 
 	url := "http://gpu01.yawal.io:8080/generate"
 	if uReq.Stream {
 		url = "http://gpu01.yawal.io:8080/generate_stream"
 	}
+	//generate random hash
+	random_uuid := randSeq(29)
 	data := convertUniversalRequestToTGI(uReq, model)
-	//append one more of role assistant to prepare it for response
+	//TODO: check if we can add it if its missing, I mean if last role was not assitant, we add that
 	data.Inputs += replaceUniversalRoleWithModelRole(ASSISTANT_ROLE, model) + " "
 	jsonRequest, err := json.Marshal(data)
 
@@ -132,7 +149,7 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan *chan stri
 				if err == io.EOF {
 					//in case of stream, just to follow open ai standard, we have to send: "data: [DONE]"
 					if uRespChan != nil {
-						*uRespChan <- "\ndata: [DONE]"
+						uRespChan <- "[DONE]"
 					}
 					break
 				}
@@ -148,14 +165,14 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan *chan stri
 					log.Fatalln(err)
 				}
 				// process data here
-				uresp := convertTGIResponseToUniversalResponse(&tgiResp, model)
+				uresp := convertTGIResponseToUniversalResponse(&tgiResp, random_uuid, model, uReq.Stream)
 				uresp_data, err := json.Marshal(uresp)
 				if err != nil {
 					log.Fatalln(err)
 				}
-				log.Println(string(uresp_data))
+				// log.Println(string(uresp_data))
 				if uRespChan != nil {
-					*uRespChan <- string(uresp_data)
+					uRespChan <- string(uresp_data)
 				}
 			}
 		}
@@ -170,7 +187,7 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan *chan stri
 		if err != nil {
 			log.Fatalln(err)
 		}
-		uresp := convertTGIResponseToUniversalResponse(tgiResponseObj, model)
+		uresp := convertTGIResponseToUniversalResponse(tgiResponseObj, random_uuid, model, uReq.Stream)
 		uresp_data, err := json.Marshal(uresp)
 		if err != nil {
 			log.Fatalln(err)
@@ -181,21 +198,44 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan *chan stri
 	return nil
 }
 
-func convertTGIResponseToUniversalResponse(resp *tgiResponse, model *db.LLMModel) *UniversalResponse {
+func convertTGIResponseToUniversalResponse(resp *tgiResponse, randomUUID string, model *db.LLMModel, IsStream bool) *UniversalResponse {
+	var finiedh_reason *string
+	finiedh_reason = &resp.Details.FinishReason
+	//strickly following open ai here
+	if resp.Details.FinishReason == "" {
+		finiedh_reason = nil
+	}
+	if resp.Details.FinishReason == "eos_token" {
+		*finiedh_reason = "stop"
+	}
+	message := &Message{
+		Role:    string(ASSISTANT_ROLE),
+		Content: resp.Token.Text,
+	}
+	delta := &Delta{
+		Content: &resp.Token.Text,
+	}
+	if IsStream {
+		message = nil
+	}
+	if !IsStream {
+		delta = nil
+	}
+	// if *finiedh_reason == "stop" {
+	// 	delta.Content = nil
+	// }
 	ures := &UniversalResponse{
-		ID:      fmt.Sprintf("chatcmpl-%d", resp.Token.Id),
-		Object:  "chat.completion",
+		ID:      fmt.Sprintf("chatcmpl-%s", randomUUID),
+		Object:  "chat.completion.chunk",
 		Created: int(time.Now().Unix()),
 		Model:   model.Name,
 		Usage:   nil, //not gonna do that
 		Choices: []Choice{
 			{
-				Index: 0,
-				Message: Message{
-					Role:    string(ASSISTANT_ROLE),
-					Content: resp.Token.Text,
-				},
-				FinishReason: resp.Details.FinishReason,
+				Index:        0,
+				Message:      message,
+				Delta:        delta,
+				FinishReason: finiedh_reason,
 			},
 		},
 	}
