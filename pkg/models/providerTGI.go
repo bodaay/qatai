@@ -132,7 +132,7 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan chan strin
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(string(jsonRequest))
+	// log.Println(string(jsonRequest))
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonRequest))
 	if err != nil {
 		log.Fatalln(err)

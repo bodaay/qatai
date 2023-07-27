@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"qatai/pkg/db"
 	"qatai/pkg/models"
@@ -32,13 +31,13 @@ func StartGeneartionServer(addr string, WebFS http.FileSystem, mydb db.QataiData
 			return nil
 		},
 	}))
-	e.POST("/v1/chat/completions", chatCompletionHandler(mydb))
+	e.POST("/v1/chat/completions", chatCompletionHandler(mydb, httplogger))
 	e.GET("/*", echo.WrapHandler(assetHandler))
 	return e.Start(addr)
 
 }
 
-func chatCompletionHandler(mydb db.QataiDatabase) echo.HandlerFunc {
+func chatCompletionHandler(mydb db.QataiDatabase, logger *zap.Logger) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		c.Response().Header().Set(echo.HeaderContentType, "text/event-stream")
 		c.Response().Header().Set("X-Accel-Buffering", "no")
@@ -55,25 +54,30 @@ func chatCompletionHandler(mydb db.QataiDatabase) echo.HandlerFunc {
 
 		llmmodel, err := db.GetModelByName(mydb, "gpt-4-0613")
 		if err != nil {
-			log.Fatalln(err)
+			return err
 		}
 		// llmmodel.Stops = []string{"</s>"}
 		events := make(chan string, 100)
 		go models.DoGenerate(&uniReq, llmmodel, events)
-		timeout := time.After(10 * time.Second)
+		timeoutInterval := 10
+		timeout := time.After(time.Duration(timeoutInterval) * time.Second)
+		GeneratedTokens := 0
 	Loop:
 		for {
 			select {
 			case ev := <-events:
 				n, err := fmt.Fprintf(c.Response(), "data: %v\n\n", ev)
 				if err != nil {
-					log.Println(err)
+					logger.Error(err.Error())
+					continue
 				}
-
-				fmt.Printf("written for buffer: %d, with data: %v\n", n, ev)
+				_ = n
+				GeneratedTokens += 1
+				// fmt.Printf("written for buffer: %d, with data: %v\n", n, ev)
 
 				c.Response().Flush()
 				if ev == "[DONE]" {
+					logger.Info(fmt.Sprintf("Total Number of Tokens Generated: %d", GeneratedTokens-1))
 					_, _ = fmt.Fprintf(c.Response(), ":\n\n") // Apparently this forces close SSE
 					close(events)
 					break Loop
@@ -81,6 +85,7 @@ func chatCompletionHandler(mydb db.QataiDatabase) echo.HandlerFunc {
 
 			case <-timeout:
 				_, _ = fmt.Fprintf(c.Response(), ":\n\n") // Apparently this forces close SSE
+				logger.Debug(fmt.Sprintf("Timed out while waiting for generation to completed, Timeout: %d seconds", timeoutInterval))
 				close(events)
 				c.Response().Flush()
 				break Loop
