@@ -199,6 +199,8 @@ func DoGenerate(uReq *UniversalRequest, model *db.LLMModel, uRespChan chan strin
 }
 
 func convertTGIResponseToUniversalResponse(resp *tgiResponse, randomUUID string, model *db.LLMModel, IsStream bool) *UniversalResponse {
+	//filter out all unwanted characters from the string
+	resp.Token.Text = strings.ReplaceAll(resp.Token.Text, "</s>", "") // TODO: check if this is ok later
 	var finiedh_reason *string
 	finiedh_reason = &resp.Details.FinishReason
 	//strickly following open ai here
@@ -221,6 +223,7 @@ func convertTGIResponseToUniversalResponse(resp *tgiResponse, randomUUID string,
 	if !IsStream {
 		delta = nil
 	}
+
 	// if *finiedh_reason == "stop" {
 	// 	delta.Content = nil
 	// }

@@ -12,7 +12,6 @@ import (
 	"qatai/pkg/api"
 	"qatai/pkg/db"
 
-	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"go.uber.org/zap"
@@ -116,8 +115,8 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	//db
 
 	//webserver
-	e := echo.New()
-	e.HideBanner = true
+	// e := echo.New()
+	// e.HideBanner = true
 	go func() {
 		mainLogger.Info(fmt.Sprintf("qatai (v%v) is running on %v ...", version, cmd.addr))
 		mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
@@ -133,7 +132,7 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 			panic(err)
 		}
 		TestDB(mdb, bdb)
-		api.StartGeneartionServer(getFileSystem(true, cmd.config.logger.Named("http")), bdb)
+		api.StartGeneartionServer(getFileSystem(false, cmd.config.logger.Named("http")), bdb)
 		// SetupServer(e, cmd.config.logger.Named("http"))
 		// err := e.Start(cmd.addr)
 		// if err != http.ErrServerClosed {
@@ -152,10 +151,10 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	// Note: We expect httpServer.Handler to handle timeouts, thus, we don't
 	// need a context value with deadline here.
 	//nolint:contextcheck
-	err = e.Shutdown(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to shutdown HTTP server: %w", err)
-	}
+	// err = e.Shutdown(context.Background())
+	// if err != nil {
+	// 	return fmt.Errorf("failed to shutdown HTTP server: %w", err)
+	// }
 
 	return nil
 }

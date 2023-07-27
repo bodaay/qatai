@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,101 +11,109 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-	"github.com/valyala/fasthttp"
+	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/labstack/echo/v4"
 )
 
-type Client struct {
-	name   string
-	events chan string
-}
-type DashBoard struct {
-	User uint
-}
-
-var mydb db.QataiDatabase
-
 func StartGeneartionServer(WebFS http.FileSystem, mydb db.QataiDatabase) {
-	app := fiber.New()
+	app := fiber.New(
+		fiber.Config{
+			// EnablePrintRoutes: true,
+			StrictRouting: true,
+			AppName:       "QatAI",
+		},
+	)
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowHeaders: "*",
 	}))
+	// Initialize default config
+	app.Use(logger.New())
+
+	// Or extend your config for customization
+	// Logging remote IP and Port
+	app.Use(logger.New(logger.Config{
+		Format: "[${ip}]:${port} ${status} - ${method} ${path}\n",
+	}))
+
+	// Logging Request ID
+	app.Use(requestid.New())
+	app.Use(logger.New(logger.Config{
+		// For more options, see the Config section
+		Format: "${pid} ${locals:requestid} ${status} - ${method} ${path}​\n",
+	}))
+
+	// Changing TimeZone & TimeFormat
+	app.Use(logger.New(logger.Config{
+		Format:     "${pid} ${status} - ${method} ${path}\n",
+		TimeFormat: "02-Jan-2006",
+		TimeZone:   "America/New_York",
+	}))
+
 	app.Get("/ping", func(c *fiber.Ctx) error {
 		return c.JSON(c.App().Stack())
 	})
-	app.Post("/v1/chat/completions", func(c *fiber.Ctx) error {
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
-		c.Set("Transfer-Encoding", "chunked")
+
+	assetHandler := http.FileServer(WebFS)
+
+	e := echo.New()
+
+	e.POST("/v1/chat/completions", sseHandler(mydb))
+	e.GET("/*", echo.WrapHandler(assetHandler))
+	e.Start(":5050")
+
+}
+
+func sseHandler(mydb db.QataiDatabase) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().Header().Set(echo.HeaderContentType, "text/event-stream")
+		// c.Response().Header().Set(echo.HeaderXAccelBuffering, "no")
+		c.Response().Header().Set(echo.HeaderCacheControl, "no-cache")
+		c.Response().Header().Set(echo.HeaderConnection, "keep-alive")
+		c.Response().Header().Set("Transfer-Encoding", "chunked")
+
 		var uniReq models.UniversalRequest
 
-		err := json.Unmarshal(c.Request().Body(), &uniReq)
+		err := json.NewDecoder(c.Request().Body).Decode(&uniReq)
+		if err != nil {
+			return err
+		}
+
+		llmmodel, err := db.GetModelByName(mydb, "gpt-4-0613")
 		if err != nil {
 			log.Fatalln(err)
 		}
-		c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+		// llmmodel.Stops = []string{"</s>"}
+		events := make(chan string, 100)
+		go models.DoGenerate(&uniReq, llmmodel, events)
+		timeout := time.After(10 * time.Second)
+	Loop:
+		for {
+			select {
+			case ev := <-events:
+				n, err := fmt.Fprintf(c.Response(), "data: %v\n\n", ev)
+				if err != nil {
+					log.Println(err)
+				}
 
-			llmmodel, err := db.GetModelByName(mydb, "gpt-4-0613")
-			if err != nil {
-				log.Fatalln(err)
-			}
-			// llmmodel.Stops = []string{"</s>"}
-			events := make(chan string, 100)
-			go models.DoGenerate(&uniReq, llmmodel, events)
-			timeout := time.After(10 * time.Second)
-		Loop:
-			for {
-				select {
-				case ev := <-events:
-					n, err := fmt.Fprintf(w, "data: %v\n\n", ev)
-					if err != nil {
-						log.Println(err)
-					}
+				fmt.Printf("written for buffer: %d, with data: %v\n", n, ev)
 
-					fmt.Printf("written for buffer: %d, with data: %v\n", n, ev)
-
-					err = w.Flush()
-					if err != nil {
-						// Refreshing page in web browser will establish a new
-						// SSE connection, but only (the last) one is alive, so
-						// dead connections must be closed here.
-						fmt.Printf("Error while flushing: %v. Closing http connection.\n", err)
-
-						break Loop
-					}
-
-				case <-timeout:
-					_, _ = fmt.Fprintf(w, ":\n\n") // Apparently this forces close SSE
-
-					err = w.Flush()
-					if err != nil {
-						// Refreshing page in web browser will establish a new
-						// SSE connection, but only (the last) one is alive, so
-						// dead connections must be closed here.
-						fmt.Printf("Error while flushing: %v. Closing http connection.\n", err)
-
-						break
-					}
-
+				c.Response().Flush()
+				if ev == "[DONE]" {
+					_, _ = fmt.Fprintf(c.Response(), ":\n\n") // Apparently this forces close SSE
+					close(events)
 					break Loop
 				}
-			}
 
-		}))
+			case <-timeout:
+				_, _ = fmt.Fprintf(c.Response(), ":\n\n") // Apparently this forces close SSE
+				close(events)
+				c.Response().Flush()
+				break Loop
+			}
+		}
 
 		return nil
-	})
-	// app.Post("/v1/chat/completions", adaptor.HTTPHandler(handler(generationHandler)))
-	// always keep this one last, otherwise my get request didn't work
-	app.Use(filesystem.New(filesystem.Config{
-		Root:         WebFS,
-		Browse:       false,
-		Index:        "index.html",
-		NotFoundFile: "404.html",
-		MaxAge:       3600,
-	}))
-
-	app.Listen(":5050")
+	}
 }

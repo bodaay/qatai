@@ -24,6 +24,7 @@ async function fetchFromAPI(endpoint: string, key: string) {
       console.error(e.response?.data);
     }
     throw e;
+    
   }
 }
 
