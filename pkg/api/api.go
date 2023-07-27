@@ -29,8 +29,8 @@ var mydb db.QataiDatabase
 func StartGeneartionServer(WebFS http.FileSystem, mydb db.QataiDatabase) {
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://gpu01.yawal.io:3000/, http://gpu01.yawal.io",
-		AllowHeaders: "Origin, Content-Type, Accept",
+		AllowOrigins: "*",
+		AllowHeaders: "*",
 	}))
 	app.Get("/ping", func(c *fiber.Ctx) error {
 		return c.JSON(c.App().Stack())
