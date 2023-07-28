@@ -194,13 +194,25 @@ func TestDB(mdb db.QataiDatabase, bdb db.QataiDatabase) {
 		Truncate:           2048,
 		MaxNewTokens:       1024,
 	}
-	tokens := db.LLMTokens{
+	tokens := db.LLMTokens{ //LlamaV2
 		SystemToken:    "<<sys>>",
 		UserToken:      "[INST]",
 		AssistantToken: "[/INST]",
 		FunctionToken:  "",
 	}
-	model := db.NewLLMModel("gpt-4-0613", "LLaMa V2 13B parameters", db.HFTGI, "<<SYS>>\n You are a helpful, respectful and honest assistant. <</SYS>>", tokens, []string{"</s>"}, endpoints, prompts, params)
+	// tokens := db.LLMTokens{ // WizardLM,Tap-M/Luna-AI-Llama2-Uncensored
+	// 	SystemToken:    "<<sys>>",
+	// 	UserToken:      "USER: ",
+	// 	AssistantToken: "ASSISTANT: ",
+	// 	FunctionToken:  "",
+	// }
+	// tokens := db.LLMTokens{ // arogov/llama2_13b_chat_uncensored
+	// 	SystemToken:    "<<sys>>",
+	// 	UserToken:      "### HUMAN:\n",
+	// 	AssistantToken: "### RESPONSE:\n",
+	// 	FunctionToken:  "",
+	// }
+	model := db.NewLLMModel("gpt-4-0613", "LLaMa V2 13B parameters", db.HFTGI, "", tokens, []string{"</s>"}, endpoints, prompts, params)
 
 	if err := db.AddUpdateModel(mdb, model, false); err != nil {
 		log.Errorf("Failed to add/update model: %s", err.Error())

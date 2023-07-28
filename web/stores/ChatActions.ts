@@ -79,7 +79,7 @@ export const delMessage = (message: Message) => {
   }));
 };
 
-export const setColorScheme = (scheme: "light" | "dark") =>
+export const setColorScheme = (scheme: "dark" | "light") => //bodaay: swapped the order of colors
   set((state) => ({ colorScheme: scheme }));
 
 export const setApiKey = (key: string) => set((state) => ({ apiKey: key }));

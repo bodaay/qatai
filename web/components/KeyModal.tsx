@@ -63,7 +63,7 @@ export function APIPanel({
       setCheckStatus("loading");
 
       const keyValid = await validateKey(apiKey, region);
-
+      
       if (keyValid) {
         notifications.show({
           message: "Key saved!",

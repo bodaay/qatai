@@ -73,7 +73,8 @@ export const submitMessage = async (message: Message) => {
     }),
   }));
 
-  const apiKey = get().apiKey;
+
+  const apiKey = get().apiKey 
   if (apiKey === undefined) {
     console.error("API key not set");
     return;

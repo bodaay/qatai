@@ -18,7 +18,12 @@ func StartGeneartionServer(addr string, WebFS http.FileSystem, mydb db.QataiData
 	assetHandler := http.FileServer(WebFS)
 
 	e := echo.New()
+
 	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		// AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
+	}))
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:    true,
 		LogStatus: true,
@@ -86,7 +91,7 @@ func chatCompletionHandler(mydb db.QataiDatabase, logger *zap.Logger) echo.Handl
 			case <-timeout:
 				_, _ = fmt.Fprintf(c.Response(), ":\n\n") // Apparently this forces close SSE
 				logger.Debug(fmt.Sprintf("Timed out while waiting for generation to completed, Timeout: %d seconds", timeoutInterval))
-				close(events)
+				// close(events) //TODO: //I still dont know whats the best approach for this, how do I time out
 				c.Response().Flush()
 				break Loop
 			}

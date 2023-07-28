@@ -124,14 +124,14 @@ export interface ChatState {
 }
 export const initialState = {
   apiState: "idle" as APIState,
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || undefined,
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "dummyKey", // bodaay: added this to save as dummy key 
   apiKey11Labs: process.env.NEXT_PUBLIC_11LABS_API_KEY || undefined,
   apiKeyAzure: process.env.NEXT_PUBLIC_AZURE_API_KEY || undefined,
   apiKeyAzureRegion: process.env.NEXT_PUBLIC_AZURE_REGION || undefined,
 
   chats: [],
   activeChatId: undefined,
-  colorScheme: "light" as "light" | "dark",
+  colorScheme: "dark" as "dark" | "light", // bodaay: changed this to make default as 'dark', light theme for psychopaths
   currentAbortController: undefined,
   settingsForm: defaultSettings,
   defaultSettings: defaultSettings,

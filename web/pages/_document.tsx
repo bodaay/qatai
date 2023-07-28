@@ -35,11 +35,11 @@ export default class _Document extends Document {
 
           <script
             async
-            src="https://cdn.jsdelivr.net/npm/opus-media-recorder@latest/OpusMediaRecorder.umd.js"
+            src="/scripts/OpusMediaRecorder.umd.js"
           ></script>
           <script
             async
-            src="https://cdn.jsdelivr.net/npm/opus-media-recorder@latest/encoderWorker.umd.js"
+            src="/scripts/encoderWorker.umd.js"
           ></script>
         </body>
       </Html>

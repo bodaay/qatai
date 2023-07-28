@@ -30,6 +30,8 @@ async function fetchFromAPI(endpoint: string, key: string) {
 
 export async function testKey(key: string): Promise<boolean> {
   try {
+    
+    return true;  //bodaay
     const res = await fetchFromAPI("https://api.openai.com/v1/models", key);
     return res.status === 200;
   } catch (e) {
@@ -44,6 +46,8 @@ export async function testKey(key: string): Promise<boolean> {
 
 export async function fetchModels(key: string): Promise<string[]> {
   try {
+    const dummyStringArray = ['dummyString1']; //bodaay
+    return dummyStringArray;  //bodaay
     const res = await fetchFromAPI("https://api.openai.com/v1/models", key);
     return res.data.data.map((model: any) => model.id);
   } catch (e) {
