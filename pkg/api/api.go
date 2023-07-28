@@ -37,6 +37,7 @@ func StartGeneartionServer(addr string, WebFS http.FileSystem, mydb db.QataiData
 		},
 	}))
 	e.POST("/v1/chat/completions", chatCompletionHandler(mydb, httplogger))
+	// e.File("/chat/*", "/index.html") // this is still not working
 	e.GET("/*", echo.WrapHandler(assetHandler))
 	return e.Start(addr)
 

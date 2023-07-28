@@ -27,7 +27,7 @@ build-qatai:
 
 .PHONY: build-web
 build-web:
-	cd web && \
+	cd qatai-web && \
 	yarn install --frozen-lockfile && \
 	yarn run export && \
 	rm -rf ../cmd/qatai/web/ && \
@@ -37,5 +37,5 @@ build-web:
 clean:
 	rm -f out/*
 	rm -rf ./cmd/qatai/web
-	rm -rf ./web/dist/
-	rm -rf ./web/.next
+	rm -rf ./qatai-web/dist/
+	rm -rf ./qatai-web/.next

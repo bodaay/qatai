@@ -1,1 +1,1 @@
-# QatAI
+# qatai
