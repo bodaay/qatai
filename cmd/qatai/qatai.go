@@ -122,17 +122,17 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 		mainLogger.Info(fmt.Sprintf("qatai (v%v) is running on %v ...", version, cmd.addr))
 		mainLogger.Info(fmt.Sprintf("\x1b[%dm%s\x1b[0m", uint8(32), "Get started at "+url))
 		//start the Generation API
-		mdb, err := db.InitNewMongoDB("mongodb://localhost:27017", "qatai")
-		if err != nil {
-			panic(err)
-		}
-		os.MkdirAll("data", os.ModePerm)
+		// mdb, err := db.InitNewMongoDB("mongodb://localhost:27017", "qatai")
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// os.MkdirAll("data", os.ModePerm)
 		bboltDbPath := path.Join("data", "bbolt.db")
 		bdb, err := db.InitNewBoltDB(bboltDbPath)
 		if err != nil {
 			panic(err)
 		}
-		TestDB(mdb, bdb)
+		TestDB(bdb)
 		err = api.StartGeneartionServer(cmd.addr, getFileSystem(false, cmd.config.logger.Named("http")), bdb, cmd.config.logger.Named("http"))
 
 		if err != http.ErrServerClosed {
@@ -159,22 +159,19 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 	return nil
 }
 
-func TestDB(mdb db.QataiDatabase, bdb db.QataiDatabase) {
+func TestDB(bdb db.QataiDatabase) {
 
-	db.ClearAllConfig(mdb)
 	db.ClearAllConfig(bdb)
-	db.SetConfig(mdb, &db.Config{Key: "TestKey", Value: "TestValue"})
-	db.SetConfig(mdb, &db.Config{Key: "TestKey2", Value: "TestValue2"})
+
 	db.SetConfig(bdb, &db.Config{Key: "TestKey", Value: "TestValue"})
 	db.SetConfig(bdb, &db.Config{Key: "TestKey2", Value: "TestValue2"})
-	fmt.Println(db.GetConfig(mdb, "TestKey"))
+
 	fmt.Println(db.GetConfig(bdb, "TestKey"))
 
-	fmt.Println(db.GetAllConfig(mdb))
 	fmt.Println(db.GetAllConfig(bdb))
 
 	//Test Creating models:
-	db.ClearAllModels(mdb)
+
 	db.ClearAllModels(bdb)
 
 	endpoints := []db.LLMEndPoint{
@@ -214,13 +211,9 @@ func TestDB(mdb db.QataiDatabase, bdb db.QataiDatabase) {
 	// }
 	model := db.NewLLMModel("gpt-4-0613", "LLaMa V2 13B parameters", db.HFTGI, "", tokens, []string{"</s>"}, endpoints, prompts, params)
 
-	if err := db.AddUpdateModel(mdb, model, false); err != nil {
-		log.Errorf("Failed to add/update model: %s", err.Error())
-	}
 	if err := db.AddUpdateModel(bdb, model, false); err != nil {
 		log.Errorf("Failed to add/update model: %s", err.Error())
 	}
-	fmt.Println(db.GetAllModels(mdb))
 	fmt.Println(db.GetAllModels(bdb))
 
 	// uReq := &models.UniversalRequest{

@@ -28,3 +28,4 @@ _test_mongo_doker/data/
 out/
 cmd/qatai/web/
 data/
+pb_data/

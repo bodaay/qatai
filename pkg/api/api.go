@@ -3,43 +3,36 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
+	"io/fs"
+	"log"
 	"qatai/pkg/db"
 	"qatai/pkg/models"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
+	"github.com/pocketbase/pocketbase/core"
 	"go.uber.org/zap"
 )
 
-func StartGeneartionServer(addr string, WebFS http.FileSystem, mydb db.QataiDatabase, httplogger *zap.Logger) error {
+func StartGeneartionServer(addr string, WebFS fs.FS, mydb db.QataiDatabase, httplogger *zap.Logger) error {
+	// I love pocketbase <3
+	app := pocketbase.New()
+	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
+		e.Router.GET("/*", apis.StaticDirectoryHandler(WebFS, false))
 
-	assetHandler := http.FileServer(WebFS)
-
-	e := echo.New()
-
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		// AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept},
-	}))
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogURI:    true,
-		LogStatus: true,
-		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			httplogger.Info("request",
-				zap.String("URI", v.URI),
-				zap.Int("status", v.Status),
-			)
-
-			return nil
-		},
-	}))
-	e.POST("/v1/chat/completions", chatCompletionHandler(mydb, httplogger))
-	// e.File("/chat/*", "/index.html") // this is still not working
-	e.GET("/*", echo.WrapHandler(assetHandler))
-	return e.Start(addr)
+		e.Router.POST("/v1/chat/completions", chatCompletionHandler(mydb, httplogger))
+		return nil
+	})
+	app.RootCmd.SetArgs([]string{"serve", "--http=0.0.0.0:5050", "--origins=*"})
+	if err := app.Start(); err != nil {
+		log.Fatal(err)
+	}
+	for {
+		time.Sleep(1 * time.Second)
+	}
+	return nil
 
 }
 
@@ -47,8 +40,8 @@ func chatCompletionHandler(mydb db.QataiDatabase, logger *zap.Logger) echo.Handl
 	return func(c echo.Context) error {
 		c.Response().Header().Set(echo.HeaderContentType, "text/event-stream")
 		c.Response().Header().Set("X-Accel-Buffering", "no")
-		c.Response().Header().Set(echo.HeaderCacheControl, "no-cache")
-		c.Response().Header().Set(echo.HeaderConnection, "keep-alive")
+		// c.Response().Header().Set(echo.HeaderCacheControl, "no-cache")
+		// c.Response().Header().Set(echo.HeaderConnection, "keep-alive")
 		c.Response().Header().Set("Transfer-Encoding", "chunked")
 
 		var uniReq models.UniversalRequest

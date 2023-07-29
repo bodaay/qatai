@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"io/fs"
-	"net/http"
 	"os"
 
 	"go.uber.org/zap"
@@ -16,10 +15,10 @@ import (
 var WebContent embed.FS
 
 // TODO: utlize this properly, lets add this later into config so we can make the choice of embeded or live
-func getFileSystem(useOS bool, httplogger *zap.Logger) http.FileSystem {
+func getFileSystem(useOS bool, httplogger *zap.Logger) fs.FS {
 	if useOS {
 		httplogger.Info("using live mode")
-		return http.FS(os.DirFS("/home/ubuntu/projects/qatai/cmd/qatai/web"))
+		return os.DirFS("/home/ubuntu/projects/qatai/cmd/qatai/web")
 	}
 	httplogger.Info("using embed mode")
 
@@ -28,7 +27,7 @@ func getFileSystem(useOS bool, httplogger *zap.Logger) http.FileSystem {
 		panic(err)
 	}
 
-	return http.FS(fsys)
+	return fsys
 }
 
 // func SetupServer(e *echo.Echo, httplogger *zap.Logger) {
