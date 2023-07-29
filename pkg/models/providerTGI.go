@@ -10,9 +10,10 @@ import (
 	"log"
 	"math/big"
 	"net/http"
-	"qatai/pkg/db"
 	"strings"
 	"time"
+
+	"github.com/bodaay/qatai/pkg/db"
 )
 
 type TgiRequestBody struct {

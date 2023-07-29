@@ -10,11 +10,13 @@ import (
 	"os/signal"
 	"path"
 
-	"qatai/pkg/api"
-	"qatai/pkg/db"
+	"github.com/bodaay/qatai/pkg/api"
+	"github.com/bodaay/qatai/pkg/db"
+	"github.com/bodaay/qatai/pkg/pdb"
 
 	"github.com/labstack/gommon/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/pocketbase/pocketbase"
 	"go.uber.org/zap"
 )
 
@@ -50,13 +52,13 @@ Run ` + "`qatai <subcommand> --help`" + ` for subcommand specific usage instruct
 type QataiCommand struct {
 	config    *Config
 	bboltPath string
-	useMongo  bool
-	mongoHost string
-	cert      string
-	key       string
-	db        string
-	addr      string
-	version   bool
+	// useMongo  bool
+	// mongoHost string
+	// cert      string
+	// key       string
+	db      string
+	addr    string
+	version bool
 }
 
 func NewqataiCommand() (*ffcli.Command, *Config) {
@@ -71,10 +73,10 @@ func NewqataiCommand() (*ffcli.Command, *Config) {
 	// fs.StringVar(&cmd.key, "key", "~/.qatai/qatai_key.pem",
 	// 	"Path to root CA private key. Creates a new private key if file doesn't exist.")
 	fs.StringVar(&cmd.bboltPath, "bbolt_path", "~/.qatai/db", "Database directory path.")
-	fs.BoolVar(&cmd.useMongo, "use_mongo", false, "use mongo db instead of bbolt")
-	fs.StringVar(&cmd.mongoHost, "mongo_host", "mongodb://localhost:27017", "mongo db connection string")
+	// fs.BoolVar(&cmd.useMongo, "use_mongo", false, "use mongo db instead of bbolt")
+	// fs.StringVar(&cmd.mongoHost, "mongo_host", "mongodb://localhost:27017", "mongo db connection string")
 	fs.StringVar(&cmd.db, "db", "~/.qatai/db", "Database directory path.")
-	fs.StringVar(&cmd.addr, "addr", ":5050", "TCP address to listen on, in the form \"host:port\".")
+	fs.StringVar(&cmd.addr, "addr", "0.0.0.0:5050", "TCP address to listen on, in the form \"host:port\".")
 	fs.BoolVar(&cmd.version, "version", false, "Output version.")
 	fs.BoolVar(&cmd.version, "v", false, "Output version.")
 
@@ -133,11 +135,29 @@ func (cmd *QataiCommand) Exec(ctx context.Context, _ []string) error {
 			panic(err)
 		}
 		TestDB(bdb)
-		err = api.StartGeneartionServer(cmd.addr, getFileSystem(false, cmd.config.logger.Named("http")), bdb, cmd.config.logger.Named("http"))
+		app := pocketbase.NewWithConfig(
+			&pocketbase.Config{
+				DefaultDebug:    false,
+				DefaultDataDir:  "qatai_db",
+				HideStartBanner: false,
+			},
+		)
 
-		if err != http.ErrServerClosed {
-			mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
+		api.InitRoutes(app, getFileSystem(false, cmd.config.logger.Named("http")), bdb, cmd.config.logger.Named("http"))
+		app.RootCmd.SetArgs([]string{"serve", fmt.Sprintf("--http=%s", cmd.addr), "--origins=*"})
+		err = pdb.InitPDB(app)
+		if err != nil {
+			mainLogger.Fatal("Failed to initiate PocketDB", zap.Error(err))
 		}
+
+		go func() {
+			if err := app.Start(); err != nil {
+				mainLogger.Fatal("HTTP server could not start", zap.Error(err))
+			}
+			if err != http.ErrServerClosed {
+				mainLogger.Fatal("HTTP server closed unexpected.", zap.Error(err))
+			}
+		}()
 
 	}()
 

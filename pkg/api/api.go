@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log"
-	"qatai/pkg/db"
-	"qatai/pkg/models"
 	"time"
+
+	"github.com/bodaay/qatai/pkg/db"
+	"github.com/bodaay/qatai/pkg/models"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -16,23 +16,17 @@ import (
 	"go.uber.org/zap"
 )
 
-func StartGeneartionServer(addr string, WebFS fs.FS, mydb db.QataiDatabase, httplogger *zap.Logger) error {
+func InitRoutes(app *pocketbase.PocketBase, WebFS fs.FS, mydb db.QataiDatabase, httplogger *zap.Logger) {
 	// I love pocketbase <3
-	app := pocketbase.New()
+
 	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
 		e.Router.GET("/*", apis.StaticDirectoryHandler(WebFS, false))
 
 		e.Router.POST("/v1/chat/completions", chatCompletionHandler(mydb, httplogger))
 		return nil
 	})
-	app.RootCmd.SetArgs([]string{"serve", "--http=0.0.0.0:5050", "--origins=*"})
-	if err := app.Start(); err != nil {
-		log.Fatal(err)
-	}
-	for {
-		time.Sleep(1 * time.Second)
-	}
-	return nil
+
+	// return nil
 
 }
 
