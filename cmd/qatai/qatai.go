@@ -208,17 +208,17 @@ func TestDB(bdb db.QataiDatabase) {
 		Top_P:              0.9,
 		Top_K:              40,
 		RepetitionPenality: 1.0,
-		Truncate:           2048,
-		MaxNewTokens:       1024,
+		Truncate:           4096,
+		MaxNewTokens:       2048,
 	}
 	tokens := db.LLMTokens{ //LlamaV2
 		SystemToken:    "<<sys>>",
-		UserToken:      "[INST]",
-		AssistantToken: "[/INST]",
+		UserToken:      "[INST] ",
+		AssistantToken: "[/INST] ",
 		FunctionToken:  "",
 	}
-	// tokens := db.LLMTokens{ // WizardLM,Tap-M/Luna-AI-Llama2-Uncensored
-	// 	SystemToken:    "<<sys>>",
+	// tokens := db.LLMTokens{ // WizardLM,Tap-M/Luna-AI-Llama2-Uncensored,airboros
+	// 	SystemToken:    "",
 	// 	UserToken:      "USER: ",
 	// 	AssistantToken: "ASSISTANT: ",
 	// 	FunctionToken:  "",

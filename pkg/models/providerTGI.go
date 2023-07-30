@@ -30,8 +30,8 @@ type TgiParameters struct {
 	RepetitionPenalty float64  `json:"repetition_penalty"` //required
 	// BestOf              int      `json:"best_of"`
 	// DecoderInputDetails bool    `json:"decoder_input_details"`
-	Details bool `json:"details"`
-	// DoSample            bool    `json:"do_sample"`
+	Details        bool    `json:"details"`
+	DoSample       bool    `json:"do_sample"`
 	ReturnFullText bool    `json:"return_full_text"`
 	Seed           *int    `json:"seed"`
 	Truncate       *int    `json:"truncate"`
@@ -75,8 +75,8 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 	inputText := ""
 
 	for _, m := range req.Messages {
-		inputText += replaceUniversalRoleWithModelRole(ChatRole(m.Role), model) + " "
-		inputText += m.Content + " \n"
+		inputText += replaceUniversalRoleWithModelRole(ChatRole(m.Role), model) + ""
+		inputText += m.Content + ""
 	}
 
 	data := TgiRequestBody{
@@ -91,8 +91,8 @@ func convertUniversalRequestToTGI(req *UniversalRequest, model *db.LLMModel) *Tg
 			TypicalP:          0.95,                                //required
 			// BestOf:              1,
 			// DecoderInputDetails: false,
-			Details: true,
-			// DoSample: false,
+			Details:  true,
+			DoSample: true,
 
 			// ReturnFullText:    true,
 			// Seed:              nil,
