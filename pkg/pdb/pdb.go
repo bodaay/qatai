@@ -1,6 +1,8 @@
 package pdb
 
 import (
+	"log"
+
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/types"
 
@@ -35,14 +37,7 @@ func InitPDB(app *pocketbase.PocketBase) error {
 			if err != nil {
 				return err
 			}
-			//Insert default recrods for providers
-			// record := models.NewRecord(providers_collection)
-			// record.Set("title", "Lorem ipsum")
-			// record.Set("active", true)
-			// record.Set("someOtherField", 123)
-			// if err := app.Dao().SaveRecord(record); err != nil {
-			// 	return err
-			// }
+
 			if _, err := app.Dao().FindCollectionByNameOrId("models"); err != nil {
 				err = initCollection_Models(app, prompts_collection, providers_collection)
 				if err != nil {
@@ -69,6 +64,35 @@ func InitPDB(app *pocketbase.PocketBase) error {
 				if err != nil {
 					return err
 				}
+			}
+			config_provider, err := app.Dao().FindCollectionByNameOrId("config")
+			if err != nil {
+				return err
+			}
+			//Insert default recrods
+			//providers
+			record_provider := models.NewRecord(providers_collection)
+			record_provider.Set("name", "OPEN_AI")
+			record_provider.Set("enabled", true)
+			if err := app.Dao().SaveRecord(record_provider); err != nil {
+				log.Println(err) // its ok if there is an error for now because on unique index, maybe later I'll change to detect if DB is initialized or not
+			}
+			record_provider.Set("name", "HF_TGI")
+			record_provider.Set("enabled", true)
+			if err := app.Dao().SaveRecord(record_provider); err != nil {
+				log.Println(err) // its ok if there is an error for now because on unique index, maybe later I'll change to detect if DB is initialized or not
+			}
+			record_provider.Set("name", "OOBABOOGA")
+			record_provider.Set("enabled", true)
+			if err := app.Dao().SaveRecord(record_provider); err != nil {
+				log.Println(err) // its ok if there is an error for now because on unique index, maybe later I'll change to detect if DB is initialized or not
+			}
+			//config
+			record_config := models.NewRecord(config_provider)
+			record_config.Set("name", "OPEN_AI_KEY")
+			record_config.Set("value", "DummyValue")
+			if err := app.Dao().SaveRecord(record_config); err != nil {
+				log.Println(err) // its ok if there is an error for now because on unique index, maybe later I'll change to detect if DB is initialized or not
 			}
 			return nil
 		})
